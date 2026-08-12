@@ -35,6 +35,7 @@ export {createLaymanNode, createLaymanTab, createLaymanWindow} from "./createLay
 
 export {createLaymanController, useLaymanController} from "./controller";
 export type {
+    LaymanCommandAuthorizer,
     LaymanCommandDispatcher,
     LaymanControllerDispatch,
     LaymanCommandMeta,
@@ -46,11 +47,18 @@ export type {
     UseLaymanControllerOptions,
 } from "./controller";
 
+export type {LaymanDndConfig} from "./dnd/types";
+export type {
+    LaymanInteractionContext,
+    LaymanInteractionDecision,
+    LaymanInteractionPolicy,
+    LaymanInteractionViewConfig,
+} from "./controller";
+
 export {LaymanView} from "./view";
 export type {
     LaymanComponents,
     LaymanEmptyProps,
-    LaymanInteractionPolicy,
     LaymanPaneProps,
     LaymanTabProps,
     LaymanViewConfig,

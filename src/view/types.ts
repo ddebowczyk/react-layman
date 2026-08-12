@@ -1,7 +1,7 @@
 import type {ComponentType} from "react";
-import type {LaymanCommand} from "../core/commands";
 import type {JsonValue, LaymanTab} from "../core/model";
 import type {LaymanCommandDispatcher, LaymanController} from "../controller/types";
+import type {LaymanDndConfig} from "../dnd/types";
 import type {LaymanToolbarConfig} from "../toolbar/types";
 
 interface LaymanSlotBase<TData extends JsonValue> {
@@ -23,17 +23,12 @@ export interface LaymanTabProps<TData extends JsonValue> extends LaymanSlotBase<
 
 export interface LaymanEmptyProps<TData extends JsonValue> extends LaymanSlotBase<TData> {}
 
-export interface LaymanInteractionPolicy<TData extends JsonValue> {
-    mutable?: boolean;
-    canExecute?: (command: LaymanCommand<TData>) => boolean;
-}
-
 export interface LaymanViewConfig<TData extends JsonValue> {
     viewId: string;
     ariaLabel?: string;
     maxDepth?: number;
     showTabs?: boolean;
-    interaction?: LaymanInteractionPolicy<TData>;
+    dnd?: LaymanDndConfig;
     toolbar?: LaymanToolbarConfig<TData>;
 }
 

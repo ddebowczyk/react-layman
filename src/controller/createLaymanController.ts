@@ -1,3 +1,4 @@
+import type {LaymanCommand} from "../core/commands";
 import {applyLaymanCommand} from "../core/engine";
 import {inspectLaymanState} from "../core/inspection";
 import type {JsonValue, LaymanState} from "../core/model";
@@ -9,10 +10,12 @@ import type {
     LaymanControllerTransition,
     LaymanTransitionListener,
 } from "./types";
+import type {LaymanInteractionDecision, LaymanInteractionPolicy} from "./policy";
 
 interface LaymanControllerCallbacks<TData extends JsonValue> {
     onStateChange?: (state: LaymanState<TData>, transition: LaymanControllerTransition<TData>) => void;
     onTransition?: LaymanTransitionListener<TData>;
+    interaction?: LaymanInteractionPolicy<TData>;
 }
 
 export interface LaymanControllerStore<TData extends JsonValue> extends LaymanController<TData> {
@@ -29,6 +32,7 @@ export function createLaymanControllerStore<TData extends JsonValue>(options: La
 
     let state = options.state;
     let callbacks: LaymanControllerCallbacks<TData> = options;
+    let interaction: LaymanInteractionPolicy<TData> | undefined = options.interaction;
     let revision = 0;
     const listeners = new Set<LaymanTransitionListener<TData>>();
 
@@ -38,13 +42,21 @@ export function createLaymanControllerStore<TData extends JsonValue>(options: La
         listeners.forEach((listener) => listener(transition));
     };
 
+    const canExecute = (command: LaymanCommand<TData>, meta?: LaymanCommandMeta): LaymanInteractionDecision => {
+        const origin = meta?.origin ?? "host";
+        return interaction?.canExecute({command, inspection: inspectLaymanState(state), origin, view: meta?.view}) ?? {kind: "allow"};
+    };
+
     const store: LaymanControllerStore<TData> = {
+        canExecute,
         dispatch(command, meta) {
-            if (meta?.allowed === false) {
+            const decision = canExecute(command, meta);
+            if (decision.kind === "deny") {
                 const transition: LaymanControllerTransition<TData> = {
                     kind: "command",
                     status: "rejected",
                     reason: "forbidden",
+                    denial: decision,
                     command,
                     meta: resolvedMeta(meta, "host"),
                     revision,
@@ -99,6 +111,7 @@ export function createLaymanControllerStore<TData extends JsonValue>(options: La
         sync(next, nextCallbacks) {
             state = next;
             callbacks = nextCallbacks;
+            interaction = nextCallbacks.interaction;
         },
     };
     return store;

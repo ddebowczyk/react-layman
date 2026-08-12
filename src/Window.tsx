@@ -14,6 +14,7 @@ export function Window({windowId, position: rawPosition, path, tab, isSelected, 
         maximizedWindowId,
         showTabs,
         layoutDispatch,
+        canExecute,
         viewId,
     } = useContext(LaymanContext);
 
@@ -42,7 +43,9 @@ export function Window({windowId, position: rawPosition, path, tab, isSelected, 
 
     // Bring this floating window to the front when its content is interacted with.
     const bringToFront = () => {
-        if (isFloating) layoutDispatch({type: "floating.focus", windowId});
+        if (isFloating && canExecute({type: "floating.focus", windowId}).kind === "allow") {
+            layoutDispatch({type: "floating.focus", windowId});
+        }
     };
 
     // Custom drag layer to track mouse position during dragging

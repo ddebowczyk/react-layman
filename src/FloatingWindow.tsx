@@ -26,7 +26,7 @@ interface ResizeInteraction {
  * with 8 drag handles that dispatch `floating.position` commands.
  */
 function FloatingWindowResizeHandles({data}: {data: FloatingWindowData}) {
-    const {layoutDispatch} = useContext(LaymanContext);
+    const {canExecute, layoutDispatch} = useContext(LaymanContext);
     const interactionRef = useRef<ResizeInteraction | null>(null);
 
     useEffect(() => {
@@ -76,6 +76,7 @@ function FloatingWindowResizeHandles({data}: {data: FloatingWindowData}) {
     const startResize = (dir: ResizeDir) => (event: React.MouseEvent) => {
         event.preventDefault();
         event.stopPropagation();
+        if (canExecute({type: "floating.position", windowId: data.id, position: data.position}).kind === "deny") return;
         layoutDispatch({type: "floating.focus", windowId: data.id});
         interactionRef.current = {dir, startX: event.clientX, startY: event.clientY, startPos: data.position};
     };

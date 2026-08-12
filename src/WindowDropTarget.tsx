@@ -1,5 +1,5 @@
 import {useDrop} from "react-dnd";
-import {TabType, WindowType} from "./dndTypes";
+import {tabDragType, windowDragType} from "./dnd/items";
 import {useContext, useEffect, useRef} from "react";
 import {LaymanContext} from "./LaymanContext";
 import {DragData, Position, WindowAddress} from "./types";
@@ -76,15 +76,15 @@ export function WindowDropTarget({windowId, path, position, placement}: WindowDr
         windowToolbarHeight,
     ]);
 
-    const [, drop] = useDrop(() => ({
-        accept: [TabType, WindowType],
+    const [{handlerId}, drop] = useDrop(() => ({
+        accept: [tabDragType, windowDragType],
         // A floating window's whole-window drag uses the dedicated
         // FloatingDockZones instead of the ordinary per-window grid (which
         // tiles the whole canvas and would leave no free space to just
         // reposition the float). Individual tab drags, and whole-window
         // drags whose source is a tiled window, are unaffected.
         canDrop: (item: DragData, monitor) => {
-            if (monitor.getItemType() === WindowType && "tabs" in item) {
+            if (monitor.getItemType() === windowDragType && "tabs" in item) {
                 return !isFloatingAddress(item.path);
             }
             return true;
@@ -92,14 +92,14 @@ export function WindowDropTarget({windowId, path, position, placement}: WindowDr
         drop: (item: DragData, monitor) => {
             const itemType = monitor.getItemType();
 
-            if (itemType === TabType && "tab" in item) {
+            if (itemType === tabDragType && "tab" in item) {
                 layoutDispatch({
                     type: "tab.move",
                     tabId: item.tab.id,
                     target: {kind: "window", windowId},
                     placement: placement,
                 });
-            } else if (itemType === WindowType && "tabs" in item && !isFloatingAddress(item.path)) {
+            } else if (itemType === windowDragType && "tabs" in item && !isFloatingAddress(item.path)) {
                 layoutDispatch({
                     type: "window.move",
                     windowId: item.id,
@@ -112,10 +112,11 @@ export function WindowDropTarget({windowId, path, position, placement}: WindowDr
             if (!monitor.canDrop()) return;
             setDropHighlightPosition(newDropHighlightPosition.current);
         },
+        collect: (monitor) => ({handlerId: monitor.getHandlerId()}),
     }));
 
     // Don't render a drop target for edge placements past the depth limit.
     if (wouldExceedMaxDepth) return null;
 
-    return <div ref={drop} className={`layman-window-drop-target ${placement}`}></div>;
+    return <div ref={drop} className={`layman-window-drop-target ${placement}`} data-layman-drop-target={handlerId ?? undefined}></div>;
 }

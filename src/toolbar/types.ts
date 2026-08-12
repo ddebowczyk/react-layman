@@ -1,7 +1,7 @@
 import type {ReactNode} from "react";
 import type {LaymanInspection} from "../core/inspection";
 import type {JsonValue, LaymanTab} from "../core/model";
-import type {LaymanCommandDispatcher, LaymanControllerTransition} from "../controller/types";
+import type {LaymanCommandAuthorizer, LaymanCommandDispatcher, LaymanControllerTransition} from "../controller/types";
 
 export type LaymanToolbarLocation = "tiled" | "floating";
 export type LaymanToolbarPlacement = "bar" | "overflow" | "both";
@@ -30,6 +30,7 @@ export interface LaymanToolbarContext<TData extends JsonValue = JsonValue> {
     inspection: LaymanInspection<TData>;
     isMaximized: boolean;
     dispatch: LaymanCommandDispatcher<TData>;
+    canExecute: LaymanCommandAuthorizer<TData>;
 }
 
 export interface LaymanToolbarItemState {

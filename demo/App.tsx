@@ -1,5 +1,13 @@
 import {useState} from "react";
-import {createLaymanTab, LaymanComponents, LaymanState, LaymanToolbarConfig, LaymanView, useLaymanController} from "../src";
+import {
+    createLaymanTab,
+    LaymanComponents,
+    LaymanInteractionPolicy,
+    LaymanState,
+    LaymanToolbarConfig,
+    LaymanView,
+    useLaymanController,
+} from "../src";
 import Pane from "./Pane";
 import Button from "./extra/Button";
 import FloatingPanel from "./extra/FloatingPanel";
@@ -47,12 +55,19 @@ const toolbar: LaymanToolbarConfig<ModuleDescriptor> = {
     overflow: "auto",
 };
 
+const readOnlyPolicy: LaymanInteractionPolicy<ModuleDescriptor> = {
+    canExecute: ({command}) => {
+        if (command.type === "tab.select" || command.type === "floating.focus") return {kind: "allow"};
+        return {kind: "deny", reason: "The demo workspace is read-only"};
+    },
+};
+
 export default function App() {
     const [state, setState] = useState<LaymanState<ModuleDescriptor>>({layout: initialLayout, floatingWindows: []});
     const [showTabs, setShowTabs] = useState(true);
     const [maxDepth, setMaxDepth] = useState(4);
     const [mutable, setMutable] = useState(true);
-    const controller = useLaymanController({state, onStateChange: setState});
+    const controller = useLaymanController({state, onStateChange: setState, interaction: mutable ? undefined : readOnlyPolicy});
 
     return (
         <div style={{color: "#cdd6f4", backgroundColor: "#232634", height: "100vh"}}>
@@ -64,7 +79,7 @@ export default function App() {
             </FloatingPanel>
             <LaymanView
                 controller={controller}
-                config={{viewId: "demo-workspace", ariaLabel: "Demo workspace", maxDepth, showTabs, interaction: {mutable}, toolbar}}
+                config={{viewId: "demo-workspace", ariaLabel: "Demo workspace", maxDepth, showTabs, toolbar}}
                 components={components}
             />
         </div>

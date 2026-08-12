@@ -4,7 +4,7 @@ import {deepEqual} from "./utils";
 import {SeparatorProps} from "./types";
 
 export function Separator({splitId, nodePosition, position, index, direction, path, separators}: SeparatorProps) {
-    const {globalContainerSize, layoutDispatch} = useContext(LaymanContext);
+    const {canExecute, globalContainerSize, layoutDispatch} = useContext(LaymanContext);
     const [isDragging, setIsDragging] = useState(false);
 
     // parseInt returns NaN (not null/undefined) when the CSS variable is missing,
@@ -33,6 +33,8 @@ export function Separator({splitId, nodePosition, position, index, direction, pa
 
     const handleMouseDown: MouseEventHandler<HTMLElement> = (event) => {
         event.preventDefault();
+        const decision = canExecute({type: "split.resize", splitId, index, leadingPercent: 50});
+        if (decision.kind === "deny") return;
         setIsDragging(true);
     };
 

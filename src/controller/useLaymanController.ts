@@ -8,6 +8,7 @@ export interface UseLaymanControllerOptions<TData extends JsonValue> {
     defaultState?: LaymanState<TData>;
     onStateChange?: LaymanControllerOptions<TData>["onStateChange"];
     onTransition?: LaymanControllerOptions<TData>["onTransition"];
+    interaction?: LaymanControllerOptions<TData>["interaction"];
 }
 
 function emptyState<TData extends JsonValue>(): LaymanState<TData> {
@@ -41,8 +42,8 @@ export function useLaymanController<TData extends JsonValue>(
         if (controlled) options.onStateChange?.(next, transition);
         else setLocalState(next);
     };
-    const callbacks: LaymanControllerOptions<TData> = {state, onStateChange, onTransition: options.onTransition};
+    const callbacks: LaymanControllerOptions<TData> = {state, onStateChange, onTransition: options.onTransition, interaction: options.interaction};
     if (!controllerRef.current) controllerRef.current = createLaymanControllerStore(callbacks);
-    controllerRef.current.sync(state, {onStateChange, onTransition: options.onTransition});
+    controllerRef.current.sync(state, {onStateChange, onTransition: options.onTransition, interaction: options.interaction});
     return controllerRef.current;
 }

@@ -1,10 +1,10 @@
 import React, {createContext, useState} from "react";
-import {DndProvider} from "react-dnd";
-import {HTML5Backend} from "react-dnd-html5-backend";
 import {DropHighlight} from "./DropHighlight";
 import type {LaymanCommand} from "./core/commands";
 import type {LaymanInspection} from "./core/inspection";
 import type {LaymanControllerTransition} from "./controller/types";
+import {LaymanDndProvider} from "./dnd/LaymanDndProvider";
+import type {LaymanDndConfig} from "./dnd/types";
 import {defaultLaymanToolbar} from "./toolbar/defaults";
 import type {LaymanToolbarConfig} from "./toolbar/types";
 import {
@@ -31,7 +31,7 @@ const defaultContextValue: LaymanContextType = {
     setWindowDragStartPosition: () => {},
     renderPane: () => <></>,
     renderTab: () => <></>,
-    mutable: true,
+    canExecute: () => ({kind: "allow"}),
     toolbar: defaultLaymanToolbar,
     inspection: {rootId: null, windows: [], splits: []},
     renderNull: () => <></>,
@@ -48,10 +48,11 @@ interface LaymanRuntimeProps {
     state: LaymanState;
     inspection: LaymanInspection;
     dispatch(command: LaymanCommand): LaymanControllerTransition;
+    canExecute: LaymanContextType["canExecute"];
     renderPane: PaneRenderer;
     renderTab: TabRenderer;
     renderNull: () => JSX.Element;
-    mutable: boolean;
+    dnd?: LaymanDndConfig;
     maxDepth: number;
     showTabs: boolean;
     toolbar?: LaymanToolbarConfig;
@@ -68,7 +69,8 @@ export const LaymanRuntime = ({
     renderPane,
     renderTab,
     renderNull,
-    mutable,
+    canExecute,
+    dnd,
     maxDepth,
     showTabs,
     toolbar = defaultLaymanToolbar,
@@ -99,7 +101,7 @@ export const LaymanRuntime = ({
                 setWindowDragStartPosition,
                 renderPane,
                 renderTab,
-                mutable,
+                canExecute,
                 toolbar,
                 inspection,
                 renderNull,
@@ -112,11 +114,11 @@ export const LaymanRuntime = ({
                 ariaLabel,
             }}
         >
-            <DndProvider backend={HTML5Backend}>
+            <LaymanDndProvider config={dnd}>
                 <DropHighlight position={dropHighlightPosition} isDragging={globalDragging} />
                 <div id={`${viewId}-drag-window-border`}></div>
                 {children}
-            </DndProvider>
+            </LaymanDndProvider>
         </LaymanContext.Provider>
     );
 };

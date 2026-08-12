@@ -9,7 +9,7 @@ import type {
     LaymanTab,
     Position,
 } from "./core/model";
-import type {LaymanControllerTransition} from "./controller/types";
+import type {LaymanCommandAuthorizer, LaymanControllerTransition} from "./controller/types";
 import type {LaymanToolbarConfig} from "./toolbar/types";
 
 export type {
@@ -96,7 +96,7 @@ export interface LaymanContextType {
     setWindowDragStartPosition: Dispatch<SetStateAction<{x: number; y: number}>>;
     renderPane: PaneRenderer;
     renderTab: TabRenderer;
-    mutable: boolean;
+    canExecute: LaymanCommandAuthorizer;
     toolbar: LaymanToolbarConfig;
     inspection: LaymanInspection;
     renderNull: () => JSX.Element;

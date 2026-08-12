@@ -1,6 +1,6 @@
 import {useContext, useEffect, useMemo, useState} from "react";
 import {useDrag, useDragLayer} from "react-dnd";
-import {WindowType} from "./dndTypes";
+import {windowDragType} from "./dnd/items";
 import {LaymanContext} from "./LaymanContext";
 import type {LaymanTab, Position, WindowAddress} from "./types";
 import {isFloatingAddress} from "./utils";
@@ -15,7 +15,7 @@ interface UseWindowDragOptions {
 
 /** Coordinates the two drag handles that can move one window. */
 export function useWindowDrag({windowId, path, position, tabs, selectedTabId}: UseWindowDragOptions) {
-    const {layoutDispatch, setGlobalDragging, setWindowDragStartPosition, setDraggedWindowTabs} = useContext(LaymanContext);
+    const {canExecute, layoutDispatch, setGlobalDragging, setWindowDragStartPosition, setDraggedWindowTabs} = useContext(LaymanContext);
     const [currentMousePosition, setCurrentMousePosition] = useState({top: position.top, left: position.left});
     const [dragStartPosition, setDragStartPosition] = useState({x: 0, y: 0});
     const emptyImage = useMemo(() => {
@@ -42,8 +42,14 @@ export function useWindowDrag({windowId, path, position, tabs, selectedTabId}: U
     };
 
     const dragSpec = {
-        type: WindowType,
+        type: windowDragType,
         item: {id: windowId, path, tabs, selectedTabId},
+        canDrag: () => {
+            const command = isFloatingAddress(path)
+                ? {type: "floating.position" as const, windowId, position}
+                : {type: "window.move" as const, windowId, target: {kind: "root" as const}, placement: "center" as const};
+            return canExecute(command).kind === "allow";
+        },
         collect: (monitor: {isDragging: () => boolean}) => ({isDragging: monitor.isDragging()}),
         end: (_item: unknown, monitor: {didDrop: () => boolean}) => finishDrag(monitor),
     };

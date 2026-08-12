@@ -1,6 +1,6 @@
 import {useContext} from "react";
 import {useDragLayer, useDrop} from "react-dnd";
-import {WindowType} from "./dndTypes";
+import {windowDragType} from "./dnd/items";
 import {LaymanContext} from "./LaymanContext";
 import {findWindowRectAtPoint} from "./layoutGeometry";
 import {DragData, Position} from "./types";
@@ -56,7 +56,7 @@ function edgeZoneRect(edge: Edge, container: {width: number; height: number}): P
 function FloatingEdgeZone({edge, container}: {edge: Edge; container: {width: number; height: number}}) {
     const {layoutDispatch} = useContext(LaymanContext);
     const [{isOver}, drop] = useDrop<DragData, void, {isOver: boolean}>(() => ({
-        accept: [WindowType],
+        accept: [windowDragType],
         canDrop: (item) => "tabs" in item && isFloatingAddress(item.path),
         drop: (item) => {
             if (!("tabs" in item)) return;
@@ -88,7 +88,7 @@ function FloatingCenterZone({windowId, position}: {windowId: string; position: P
     const {layoutDispatch} = useContext(LaymanContext);
     const [{isOver}, drop] = useDrop<DragData, void, {isOver: boolean}>(
         () => ({
-            accept: [WindowType],
+            accept: [windowDragType],
             canDrop: (item) => "tabs" in item && isFloatingAddress(item.path),
             drop: (item) => {
                 if (!("tabs" in item)) return;
@@ -123,7 +123,7 @@ function FloatingCenterZone({windowId, position}: {windowId: string; position: P
  * Renders the 5 floating-window dock zones - the 4 root edges plus the
  * dynamic "hovered tiled window" center zone - but only while a floating
  * window's whole-window drag is in progress. Detection is derived entirely
- * from the react-dnd monitor (no extra context state needed): a `WindowType`
+ * from the react-dnd monitor (no extra context state needed): a window drag
  * item is currently being dragged whose source address is a floating
  * window's.
  *
@@ -137,7 +137,7 @@ export function FloatingDockZones() {
         const itemType = monitor.getItemType();
         const item = monitor.getItem() as DragData | null;
         const isDraggingFloat =
-            monitor.isDragging() && itemType === WindowType && !!item && "tabs" in item && isFloatingAddress(item.path);
+            monitor.isDragging() && itemType === windowDragType && !!item && "tabs" in item && isFloatingAddress(item.path);
         return {
             isDraggingFloat,
             clientOffset: monitor.getClientOffset(),

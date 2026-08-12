@@ -1,7 +1,7 @@
 import {useContext, useEffect} from "react";
 import {ConnectDragSource, useDrag} from "react-dnd";
 import {LaymanContext} from "./LaymanContext";
-import {TabType} from "./dndTypes";
+import {tabDragType} from "./dnd/items";
 import {LaymanTab, WindowAddress} from "./types";
 import {CloseIcon} from "./Icons";
 
@@ -15,13 +15,22 @@ interface TabProps {
 }
 
 export const Tab = ({tab, windowId, path, isSelected, onDelete, onMouseDown}: TabProps) => {
-    const {renderTab, setGlobalDragging, mutable} = useContext(LaymanContext);
+    const {canExecute, renderTab, setGlobalDragging} = useContext(LaymanContext);
+    const selectDecision = canExecute({type: "tab.select", tabId: tab.id});
+    const removeDecision = canExecute({type: "tab.remove", tabId: tab.id});
+    const moveDecision = canExecute({
+        type: "tab.move",
+        tabId: tab.id,
+        target: {kind: "window", windowId},
+        placement: "center",
+    });
     const [{isDragging}, drag] = useDrag({
-        type: TabType,
+        type: tabDragType,
         item: {
             path,
             tab,
         },
+        canDrag: moveDecision.kind === "allow",
         collect: (monitor) => ({
             isDragging: monitor.isDragging(),
         }),
@@ -40,14 +49,12 @@ export const Tab = ({tab, windowId, path, isSelected, onDelete, onMouseDown}: Ta
                 width: isDragging ? 0 : "auto",
             }}
         >
-            <button className="tab-selector" onMouseDown={onMouseDown}>
+            <button className="tab-selector" disabled={selectDecision.kind === "deny"} onMouseDown={onMouseDown}>
                 {renderTab(tab, windowId, isSelected)}
             </button>
-            {mutable && (
-                <button className="close-tab" onClick={onDelete}>
-                    <CloseIcon />
-                </button>
-            )}
+            <button className="close-tab" disabled={removeDecision.kind === "deny"} onClick={onDelete}>
+                <CloseIcon />
+            </button>
         </div>
     );
 };
@@ -61,18 +68,18 @@ interface SingleTabProps {
 }
 
 export const SingleTab = ({dragRef, tab, windowId, onDelete, onMouseDown}: SingleTabProps) => {
-    const {renderTab, mutable} = useContext(LaymanContext);
+    const {canExecute, renderTab} = useContext(LaymanContext);
+    const selectDecision = canExecute({type: "tab.select", tabId: tab.id});
+    const removeDecision = canExecute({type: "tab.remove", tabId: tab.id});
 
     return (
         <div ref={dragRef} className={`tab selected`}>
-            <button className="tab-selector" onMouseDown={onMouseDown}>
+            <button className="tab-selector" disabled={selectDecision.kind === "deny"} onMouseDown={onMouseDown}>
                 {renderTab(tab, windowId, true)}
             </button>
-            {mutable && (
-                <button className="close-tab" onClick={onDelete}>
-                    <CloseIcon />
-                </button>
-            )}
+            <button className="close-tab" disabled={removeDecision.kind === "deny"} onClick={onDelete}>
+                <CloseIcon />
+            </button>
         </div>
     );
 };

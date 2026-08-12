@@ -20,7 +20,7 @@ interface WindowMenuProps {
  * toolbar configuration defines the entire control set in its popover.
  */
 export function WindowMenu({windowId, position, tabs, selectedTabId, open, setOpen, controls}: WindowMenuProps) {
-    const {layoutDispatch, renderTab, mutable} = useContext(LaymanContext);
+    const {canExecute, layoutDispatch, renderTab} = useContext(LaymanContext);
 
     // parseInt returns NaN (not null/undefined) when the CSS variable is missing,
     // so the fallback must use || rather than ?? to actually take effect.
@@ -58,6 +58,7 @@ export function WindowMenu({windowId, position, tabs, selectedTabId, open, setOp
                             >
                                 <button
                                     className="tab-selector"
+                                    disabled={canExecute({type: "tab.select", tabId: tab.id}).kind === "deny"}
                                     onMouseDown={() => {
                                         layoutDispatch({type: "tab.select", tabId: tab.id});
                                         setOpen(false);
@@ -65,14 +66,13 @@ export function WindowMenu({windowId, position, tabs, selectedTabId, open, setOp
                                 >
                                     {renderTab(tab, windowId, tab.id === selectedTabId)}
                                 </button>
-                                {mutable && (
-                                    <button
-                                        className="close-tab"
-                                        onClick={() => layoutDispatch({type: "tab.remove", tabId: tab.id})}
-                                    >
-                                        <CloseIcon />
-                                    </button>
-                                )}
+                                <button
+                                    className="close-tab"
+                                    disabled={canExecute({type: "tab.remove", tabId: tab.id}).kind === "deny"}
+                                    onClick={() => layoutDispatch({type: "tab.remove", tabId: tab.id})}
+                                >
+                                    <CloseIcon />
+                                </button>
                             </div>
                         ))}
                     </div>

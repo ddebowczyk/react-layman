@@ -132,8 +132,8 @@ Each item can supply `render(props)` to replace the default button. Its props
 contain the stable window identity, selected tab, tiled or floating location,
 current inspection, active and disabled state, and an `invoke()` function for
 the built-in operation. A custom item also receives
-`context.dispatch(command)` for its own typed semantic command. It never
-receives a tree path or React context setter.
+`context.dispatch(command)` and `context.canExecute(command)` for its own
+typed semantic command. It never receives a tree path or React context setter.
 
 ```tsx
 {
@@ -314,6 +314,62 @@ Each transition includes the revision, the prior and next state, changed IDs,
 the command or replacement kind, origin, request ID, and rejection reason.
 `replaceState` rejects invalid state before it reaches the view.
 
+## Interaction policy
+
+Put access control at the controller boundary. The policy receives the typed
+command, a fresh detached inspection, command origin, and (for user commands)
+the view configuration. It returns an explicit allow or deny decision.
+
+```ts
+import {createLaymanController, type LaymanInteractionPolicy} from "react-layman";
+
+const interaction: LaymanInteractionPolicy = {
+    canExecute: ({command, origin, inspection}) => {
+        if (origin === "tauri" && command.type === "window.close") {
+            return {kind: "deny", reason: "The host owns window lifetime"};
+        }
+        if (inspection.windows.length >= 12 && command.type === "tab.insert") {
+            return {kind: "deny", reason: "Workspace window limit reached"};
+        }
+        return {kind: "allow"};
+    },
+};
+
+const controller = createLaymanController({state: initialState, interaction});
+const decision = controller.canExecute(command, {origin: "tauri"});
+const transition = controller.dispatch(command, {origin: "tauri", requestId: "bridge-42"});
+```
+
+`dispatch` always evaluates the policy again. This is the final authority for
+Tauri, agents, custom toolbar widgets, and React gestures. The React layer
+also evaluates it before it starts a drag or enables a control with an exact
+command, such as tab selection or close. A denied command produces a
+`forbidden` transition with the policy reason in `transition.denial`; it does
+not change state or revision.
+
+## Drag and drop integration
+
+Layman installs its own HTML5 provider by default. Configure `dnd` only when
+the host already has a provider or needs a controlled manager in tests.
+
+```tsx
+import {DndProvider} from "react-dnd";
+import {HTML5Backend} from "react-dnd-html5-backend";
+
+<DndProvider backend={HTML5Backend}>
+    <LaymanView
+        controller={controller}
+        components={components}
+        config={{viewId: "workspace", dnd: {mode: "external"}}}
+    />
+</DndProvider>;
+```
+
+For a deterministic test, inject a `DragDropManager` with
+`config={{viewId: "workspace", dnd: {mode: "manager", manager}}}`. The
+`internal` mode also accepts a custom React-DnD backend, context, and options.
+Layman has no Tauri imports in this boundary.
+
 For an isolated local React view, use `defaultState` instead of `state` and
 `onStateChange`:
 
@@ -324,8 +380,8 @@ const controller = useLaymanController({defaultState: initialState});
 `LaymanView` accepts only a controller, `LaymanViewConfig`, and
 `LaymanComponents`. `components.Pane`, `components.Tab`, and optional
 `components.Empty` receive the tab data, selected state, window ID, controller,
-and command dispatcher. `config.interaction.canExecute` can reject a UI
-command before it changes layout; the controller reports it as `forbidden`.
+and command dispatcher. The view adds its stable `viewId`, depth limit, and tab
+visibility to user-command policy context; it does not define a second policy.
 
 ## Theme
 

@@ -46,6 +46,10 @@ function stateFor<TData extends JsonValue>(action: LaymanBuiltinToolbarAction, r
     if ((action === "tab.create" || action in splitPlacement) && !runtime.config.createTab) {
         return {visible: true, disabled: true, disabledReason: "Toolbar createTab is not configured"};
     }
+    if (action === "window.close") {
+        const decision = runtime.context.canExecute({type: "window.close", windowId: runtime.context.window.id});
+        if (decision.kind === "deny") return {visible: true, disabled: true, disabledReason: decision.reason};
+    }
     if (action === "window.maximize") {
         return {visible: true, disabled: false, label: runtime.context.isMaximized ? "Restore window" : "Maximize window", active: runtime.context.isMaximized};
     }

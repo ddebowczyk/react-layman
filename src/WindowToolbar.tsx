@@ -24,6 +24,7 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
     const {
         layout,
         layoutDispatch,
+        canExecute,
         globalContainerSize,
         globalDragging,
         toolbar,
@@ -79,6 +80,7 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
         inspection,
         isMaximized,
         dispatch: layoutDispatch,
+        canExecute,
     } as const;
     const items = resolveToolbarItems(toolbar, toolbarContext);
     const runtime: ToolbarActionRuntime = {
@@ -106,7 +108,9 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
         height: position.height - windowToolbarHeight - separatorThickness / 2,
     };
     const bringToFront = () => {
-        if (isFloating) layoutDispatch({type: "floating.focus", windowId});
+        if (isFloating && canExecute({type: "floating.focus", windowId}).kind === "allow") {
+            layoutDispatch({type: "floating.focus", windowId});
+        }
     };
 
     return (

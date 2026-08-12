@@ -2,6 +2,7 @@ import {createElement} from "react";
 import {renderToStaticMarkup} from "react-dom/server";
 import {describe, expect, it} from "vitest";
 import {createLaymanController} from "../src/controller";
+import type {LaymanInteractionPolicy} from "../src/controller";
 import {createLaymanTab, createLaymanWindow} from "../src/createLaymanTab";
 import {WindowToolbarWidgets} from "../src/toolbar/WindowToolbarWidgets";
 import type {ToolbarActionRuntime} from "../src/toolbar/builtinActions";
@@ -12,16 +13,21 @@ interface ModuleData {
     kind: string;
 }
 
-function testRuntime(config: LaymanToolbarConfig<ModuleData>, atMaxDepth = false) {
+function testRuntime(
+    config: LaymanToolbarConfig<ModuleData>,
+    atMaxDepth = false,
+    interaction?: LaymanInteractionPolicy<ModuleData>
+) {
     const editor = createLaymanTab("Editor", {kind: "editor"}, "tab-editor");
     const layout = createLaymanWindow([editor], "window-editor");
-    const controller = createLaymanController({state: {layout, floatingWindows: []}});
+    const controller = createLaymanController({state: {layout, floatingWindows: []}, interaction});
     const context: LaymanToolbarContext<ModuleData> = {
         viewId: "workspace",
         window: {id: layout.id, tabs: layout.tabs, selectedTabId: layout.selectedTabId, location: "tiled"},
         inspection: controller.inspect(),
         isMaximized: false,
         dispatch: (command) => controller.dispatch(command, {origin: "user"}),
+        canExecute: (command) => controller.canExecute(command, {origin: "user"}),
     };
     const runtime: ToolbarActionRuntime<ModuleData> = {
         config,
@@ -122,5 +128,24 @@ describe("host-defined toolbar widgets", () => {
         expect(() => resolveToolbarItems({items: [{kind: "builtin", id: " ", action: "window.close"}]}, invalid.context)).toThrow(
             "toolbar item id must not be empty"
         );
+    });
+
+    it("disables denied built-ins and the controller still rejects direct bypasses", () => {
+        const interaction: LaymanInteractionPolicy<ModuleData> = {
+            canExecute: () => ({kind: "deny", reason: "workspace is read-only"}),
+        };
+        const config: LaymanToolbarConfig<ModuleData> = {
+            items: [{kind: "builtin", id: "close", action: "window.close"}],
+        };
+        const {controller, context, runtime} = testRuntime(config, false, interaction);
+        const props = toolbarItemProps(resolveToolbarItems(config, context)[0], runtime);
+
+        expect(props.state).toMatchObject({visible: true, disabled: true, disabledReason: "workspace is read-only"});
+        expect(props.invoke()).toBeUndefined();
+        expect(controller.dispatch({type: "window.close", windowId: "window-editor"})).toMatchObject({
+            status: "rejected",
+            reason: "forbidden",
+            denial: {kind: "deny", reason: "workspace is read-only"},
+        });
     });
 });

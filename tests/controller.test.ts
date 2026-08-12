@@ -35,17 +35,31 @@ describe("Layman controller", () => {
     });
 
     it("rejects forbidden commands without changing state or revision", () => {
-        const controller = createLaymanController({state: workspace()});
+        const canExecute = vi.fn(() => ({kind: "deny" as const, reason: "workspace is read-only"}));
+        const controller = createLaymanController({state: workspace(), interaction: {canExecute}});
         const before = controller.getState();
 
         const transition = controller.dispatch(
-            {type: "tab.select", tabId: "tab-editor"},
-            {origin: "user", allowed: false}
+            {type: "window.close", windowId: "window-main"},
+            {origin: "tauri", requestId: "close-9", view: {viewId: "main", maxDepth: 3, showTabs: true}}
         );
 
-        expect(transition).toMatchObject({status: "rejected", reason: "forbidden", revision: 0});
+        expect(transition).toMatchObject({
+            status: "rejected",
+            reason: "forbidden",
+            denial: {kind: "deny", reason: "workspace is read-only"},
+            revision: 0,
+        });
         expect(transition.next).toBe(before);
         expect(controller.getState()).toBe(before);
+        expect(canExecute).toHaveBeenCalledWith(
+            expect.objectContaining({
+                command: {type: "window.close", windowId: "window-main"},
+                origin: "tauri",
+                view: {viewId: "main", maxDepth: 3, showTabs: true},
+                inspection: expect.objectContaining({windows: [expect.objectContaining({id: "window-main"})]}),
+            })
+        );
     });
 
     it("replaces only valid state and exposes detached inspection", () => {
