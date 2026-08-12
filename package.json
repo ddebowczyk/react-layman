@@ -34,7 +34,6 @@
         "test:watch": "vitest",
         "typecheck:consumer": "npm run build:lib && tsc --project tests/package-consumer/tsconfig.json",
         "check:package": "node scripts/check-package.mjs",
-        "prepare": "npm run build:lib",
         "prepublishOnly": "npm run build:lib"
     },
     "repository": {
@@ -81,7 +80,6 @@
         "typescript": "^5.7.2",
         "vite": "^8.0.16",
         "vite-plugin-dts": "^4.3.0",
-        "vite-plugin-lib-inject-css": "^2.1.1",
         "vitest": "^4.1.8"
     },
     "peerDependencies": {

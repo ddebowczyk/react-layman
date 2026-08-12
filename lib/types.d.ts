@@ -1,0 +1,125 @@
+import { CSSProperties, Dispatch, ReactElement, ReactNode, SetStateAction } from 'react';
+import { LaymanCommand } from './core/commands';
+import { LaymanInspection } from './core/inspection';
+import { FloatingWindowData, JsonValue, LaymanDirection, LaymanLayout, LaymanTab, Position } from './core/model';
+import { LaymanCommandAuthorizer, LaymanControllerTransition } from './controller/types';
+import { LaymanToolbarConfig } from './toolbar/types';
+import { LaymanToolbarFrameProps } from './view/types';
+import { LaymanViewMetrics } from './view/metrics';
+export type { FloatingWindowData, JsonPrimitive, JsonValue, LaymanChildren as Children, LaymanDirection, LaymanLayout, LaymanNode, LaymanPlacement, LaymanState, LaymanTab, LaymanTree, LaymanWindow, Position, } from './core/model';
+/** A private render path. Public commands use stable IDs instead. */
+export type LaymanPath = readonly number[];
+export interface FloatingWindowAddress {
+    floatingId: string;
+}
+export type WindowAddress = LaymanPath | FloatingWindowAddress;
+export interface DragTab {
+    tab: LaymanTab;
+    path?: WindowAddress;
+}
+export interface DragWindow {
+    id: string;
+    tabs: readonly LaymanTab[];
+    path: WindowAddress;
+    selectedTabId: string | null;
+}
+export type DragData = DragTab | DragWindow;
+export interface SeparatorProps {
+    splitId: string;
+    nodePosition: Position;
+    position: Position;
+    index: number;
+    direction: LaymanDirection;
+    path: LaymanPath;
+    separators?: readonly SeparatorProps[];
+}
+export interface ToolBarProps {
+    windowId: string;
+    path: WindowAddress;
+    position: Position;
+    tabs: readonly LaymanTab[];
+    selectedTabId: string | null;
+    zIndex?: number;
+}
+export interface WindowProps {
+    windowId: string;
+    position: Position;
+    path: WindowAddress;
+    tab: LaymanTab;
+    isSelected: boolean;
+    zIndex?: number;
+}
+export type PaneRenderer = (tab: LaymanTab, windowId: string, selected: boolean) => ReactElement;
+export type TabRenderer = (tab: LaymanTab, windowId: string, selected: boolean) => string | ReactElement;
+export interface LaymanContextType {
+    globalContainerSize: Position;
+    setGlobalContainerSize: Dispatch<SetStateAction<Position>>;
+    metrics: LaymanViewMetrics;
+    setMetrics: Dispatch<SetStateAction<LaymanViewMetrics>>;
+    layout: LaymanLayout;
+    layoutDispatch: (command: LaymanCommand) => LaymanControllerTransition;
+    dropHighlightPosition: Position;
+    setDropHighlightPosition: Dispatch<Position>;
+    globalDragging: boolean;
+    setGlobalDragging: Dispatch<boolean>;
+    draggedWindowTabs: readonly LaymanTab[];
+    setDraggedWindowTabs: Dispatch<SetStateAction<readonly LaymanTab[]>>;
+    windowDragStartPosition: {
+        x: number;
+        y: number;
+    };
+    setWindowDragStartPosition: Dispatch<SetStateAction<{
+        x: number;
+        y: number;
+    }>>;
+    renderPane: PaneRenderer;
+    renderTab: TabRenderer;
+    canExecute: LaymanCommandAuthorizer;
+    toolbar: LaymanToolbarConfig;
+    inspection: LaymanInspection;
+    renderNull: () => ReactElement;
+    maximizedWindowId: string | null;
+    setMaximizedWindowId: Dispatch<SetStateAction<string | null>>;
+    floatingWindows: readonly FloatingWindowData[];
+    maxDepth: number;
+    showTabs: boolean;
+    viewId: string;
+    ariaLabel?: string;
+    rootClassName?: string;
+    rootStyle: CSSProperties;
+    /** Local target for this view's dragged-window border portal. */
+    dragBorderElement: HTMLDivElement | null;
+    setDragBorderElement: Dispatch<SetStateAction<HTMLDivElement | null>>;
+    renderToolbarFrame: (props: LaymanToolbarFrameProps) => ReactNode;
+}
+export type LaymanSchemaVersion = 2;
+export interface LaymanSerializedTab extends LaymanTab<JsonValue> {
+}
+export interface LaymanSerializedWindow {
+    kind: "window";
+    id: string;
+    tabs: readonly LaymanSerializedTab[];
+    selectedTabId: string | null;
+    viewPercent?: number;
+}
+export interface LaymanSerializedNode {
+    kind: "node";
+    id: string;
+    direction: LaymanDirection;
+    viewPercent?: number;
+    children: readonly LaymanSerializedTree[];
+}
+export type LaymanSerializedTree = LaymanSerializedWindow | LaymanSerializedNode;
+export type LaymanSerializedLayout = LaymanSerializedTree | null;
+export interface LaymanSerializedFloatingWindow {
+    id: string;
+    tabs: readonly LaymanSerializedTab[];
+    selectedTabId: string | null;
+    position: Position;
+    zIndex: number;
+}
+export interface LaymanSerializedState {
+    schemaVersion: LaymanSchemaVersion;
+    layout: LaymanSerializedLayout;
+    floatingWindows: readonly LaymanSerializedFloatingWindow[];
+}

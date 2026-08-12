@@ -1,0 +1,11 @@
+export declare function CloseIcon(): import("react").JSX.Element;
+export declare function AddIcon(): import("react").JSX.Element;
+export declare function EllipsisIcon(): import("react").JSX.Element;
+export declare function BottomSplitIcon(): import("react").JSX.Element;
+export declare function TopSplitIcon(): import("react").JSX.Element;
+export declare function LeftSplitIcon(): import("react").JSX.Element;
+export declare function RightSplitIcon(): import("react").JSX.Element;
+export declare function MaximizeIcon(): import("react").JSX.Element;
+export declare function MinimizeIcon(): import("react").JSX.Element;
+export declare function FloatIcon(): import("react").JSX.Element;
+export declare function UnfloatIcon(): import("react").JSX.Element;
