@@ -447,6 +447,14 @@ component values are `root`, `window`, `toolbar`, `tab`, `empty`, `separator`,
 `drop-target`, `dock-zone`, `floating-resize-layer`, `floating-resize-handle`,
 and `window-menu`. Other CSS classes are private implementation detail.
 
+## Tauri view integration
+
+Use `createLaymanWorkspaceBridge` to connect a controller to application-owned
+snapshot persistence, native module operations, and live host events. It has
+no Tauri runtime dependency. See [the Tauri TypeScript integration guide](docs/integrations/tauri.md)
+for setup, control, inspection, error handling, and the type-checked reference
+port.
+
 ## Quality checks
 
 ```bash

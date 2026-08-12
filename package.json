@@ -22,6 +22,7 @@
     "scripts": {
         "dev": "vite",
         "build:demo": "tsc && vite build",
+        "typecheck:tauri-example": "tsc --project examples/tauri/tsconfig.json",
         "preview": "vite preview",
         "build:lib": "tsc --project tsconfig-build.json && vite build --config vite.lib.config.ts",
         "clean": "rm -rf lib/",

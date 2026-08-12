@@ -47,6 +47,18 @@ export type {
     UseLaymanControllerOptions,
 } from "./controller";
 
+export {createLaymanWorkspaceBridge} from "./integration";
+export type {
+    LaymanModuleHost,
+    LaymanSnapshotPort,
+    LaymanWorkspaceBridge,
+    LaymanWorkspaceBridgeEvent,
+    LaymanWorkspaceBridgeOptions,
+    LaymanWorkspaceInspection,
+    LaymanWorkspaceUnsubscribe,
+    LaymanWorkspaceUpdate,
+} from "./integration";
+
 export type {LaymanDndConfig} from "./dnd/types";
 export type {
     LaymanInteractionContext,
