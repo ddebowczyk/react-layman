@@ -2,18 +2,12 @@ import {MouseEventHandler, useContext, useEffect, useState} from "react";
 import {LaymanContext} from "./LaymanContext";
 import {deepEqual} from "./utils";
 import {SeparatorProps} from "./types";
-import {useLaymanView} from "./LaymanViewContext";
-import {readLaymanStyleNumber} from "./viewMetrics";
 
-export function Separator({nodePosition, position, index, direction, path, separators}: SeparatorProps) {
-    const {globalContainerSize, layoutDispatch} = useContext(LaymanContext);
-    const {rootRef} = useLaymanView();
+export function Separator({splitId, nodePosition, position, index, direction, path, separators}: SeparatorProps) {
+    const {canExecute, globalContainerSize, layoutDispatch, metrics} = useContext(LaymanContext);
     const [isDragging, setIsDragging] = useState(false);
 
-    // parseInt returns NaN (not null/undefined) when the CSS variable is missing,
-    // so the fallback must use || rather than ?? to actually take effect.
-    const separatorThickness = readLaymanStyleNumber(rootRef.current, "--separator-thickness", 8);
-    const toolbarHeight = readLaymanStyleNumber(rootRef.current, "--toolbar-height", 32);
+    const {separatorThickness, toolbarHeight} = metrics;
 
     const previousSeparator = separators!.find((sep) => {
         const prevPath = [...path];
@@ -34,6 +28,8 @@ export function Separator({nodePosition, position, index, direction, path, separ
 
     const handleMouseDown: MouseEventHandler<HTMLElement> = (event) => {
         event.preventDefault();
+        const decision = canExecute({type: "split.resize", splitId, index, leadingPercent: 50});
+        if (decision.kind === "deny") return;
         setIsDragging(true);
     };
 
@@ -74,12 +70,11 @@ export function Separator({nodePosition, position, index, direction, path, separ
             event.preventDefault();
             if (!isDragging) return;
             const splitPercentage = calculateSplitPercentage(event);
-            const basePath = path.slice(0, path.length - 1);
             layoutDispatch({
-                type: "moveSeparator",
-                path: basePath,
+                type: "split.resize",
+                splitId,
                 index,
-                newSplitPercentage: splitPercentage,
+                leadingPercent: splitPercentage,
             });
         };
 
@@ -108,7 +103,7 @@ export function Separator({nodePosition, position, index, direction, path, separ
         nodePosition.left,
         nodePosition.top,
         nodePosition.width,
-        path,
+        splitId,
         previousSeparator,
         separatorThickness,
         toolbarHeight,
@@ -125,6 +120,8 @@ export function Separator({nodePosition, position, index, direction, path, separ
             className={`layman-separator ${direction === "column" ? "layman-col-separator" : "layman-row-separator"}`}
             onMouseDown={handleMouseDown}
             onMouseUp={handleMouseUp}
+            data-layman-component="separator"
+            data-layman-split={splitId}
         >
             <div></div>
         </div>

@@ -1,37 +1,31 @@
-import React, {createContext, useEffect, useReducer, useRef, useState} from "react";
+import React, {createContext, useState} from "react";
+import type {LaymanCommand} from "./core/commands";
+import type {LaymanInspection} from "./core/inspection";
+import type {LaymanControllerTransition} from "./controller/types";
+import {LaymanDndProvider} from "./dnd/LaymanDndProvider";
+import type {LaymanDndConfig} from "./dnd/types";
+import {defaultLaymanToolbar} from "./toolbar/defaults";
+import type {LaymanToolbarConfig} from "./toolbar/types";
 import {
     LaymanContextType,
-    LaymanLayout,
+    LaymanState,
     PaneRenderer,
-    TabRenderer,
     Position,
-    ToolbarButtonType,
-    WindowAddress,
+    TabRenderer,
 } from "./types";
-import {DndProvider} from "react-dnd";
-import {HTML5Backend} from "react-dnd-html5-backend";
-import {DropHighlight} from "./DropHighlight";
-import {TabData} from "./TabData";
-import {LaymanReducer} from "./LaymanReducer";
-import {loadState, saveState} from "./persistence";
+import {defaultLaymanViewMetrics} from "./view/metrics";
+import type {LaymanToolbarFrameProps} from "./view/types";
 
-let generatedViewCount = 0;
-
-function createViewId() {
-    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-        return `layman-${crypto.randomUUID()}`;
-    }
-    generatedViewCount += 1;
-    return `layman-${generatedViewCount}`;
-}
-
-// Define default values for the context
 const defaultContextValue: LaymanContextType = {
-    viewId: "layman-unmounted",
     globalContainerSize: {top: 0, left: 0, width: 0, height: 0},
     setGlobalContainerSize: () => {},
-    layout: {tabs: []},
-    layoutDispatch: () => {},
+    metrics: defaultLaymanViewMetrics,
+    setMetrics: () => {},
+    layout: undefined,
+    layoutDispatch: () => {
+        throw new Error("[Layman] a view controller is required");
+    },
+    dropHighlightPosition: {top: 0, left: 0, width: 0, height: 0},
     setDropHighlightPosition: () => {},
     globalDragging: false,
     setGlobalDragging: () => {},
@@ -41,105 +35,83 @@ const defaultContextValue: LaymanContextType = {
     setWindowDragStartPosition: () => {},
     renderPane: () => <></>,
     renderTab: () => <></>,
-    mutable: false,
-    toolbarButtons: [],
-    renderNull: <></>,
-    maximizedPath: null,
-    setMaximizedPath: () => {},
+    canExecute: () => ({kind: "allow"}),
+    toolbar: defaultLaymanToolbar,
+    inspection: {rootId: null, windows: [], splits: []},
+    renderNull: () => <></>,
+    maximizedWindowId: null,
+    setMaximizedWindowId: () => {},
     floatingWindows: [],
     maxDepth: Infinity,
     showTabs: true,
+    viewId: "layman",
+    ariaLabel: undefined,
+    rootClassName: undefined,
+    rootStyle: {},
+    dragBorderElement: null,
+    setDragBorderElement: () => {},
+    renderToolbarFrame: ({children}: LaymanToolbarFrameProps) => children,
 };
 
-type LaymanProviderProps = {
-    initialLayout: LaymanLayout;
+interface LaymanRuntimeProps {
+    state: LaymanState;
+    inspection: LaymanInspection;
+    dispatch(command: LaymanCommand): LaymanControllerTransition;
+    canExecute: LaymanContextType["canExecute"];
     renderPane: PaneRenderer;
     renderTab: TabRenderer;
-    renderNull: JSX.Element;
-    mutable?: boolean;
-    toolbarButtons?: Array<ToolbarButtonType>;
-    storageKey?: string;
-    // Maximum split-nesting depth (depth = path.length). Default: no limit.
-    maxDepth?: number;
-    // Show/hide the window tab row. Default: true.
-    showTabs?: boolean;
-    // Optional diagnostic and DOM-isolation ID. Generated once when omitted.
-    viewId?: string;
+    renderNull: () => JSX.Element;
+    dnd?: LaymanDndConfig;
+    maxDepth: number;
+    showTabs: boolean;
+    toolbar?: LaymanToolbarConfig;
+    viewId: string;
+    ariaLabel?: string;
+    rootClassName?: string;
+    rootStyle?: React.CSSProperties;
+    renderToolbarFrame?: (props: LaymanToolbarFrameProps) => React.ReactNode;
     children: React.ReactNode;
-};
+}
 
-export const LaymanContext = createContext<LaymanContextType>(defaultContextValue);
-
-export const LaymanProvider = ({
-    initialLayout,
+/** Internal React runtime. Public hosts use LaymanView. */
+export const LaymanRuntime = ({
+    state,
+    inspection,
+    dispatch,
     renderPane,
     renderTab,
     renderNull,
-    mutable = false,
-    toolbarButtons = [],
-    storageKey,
-    maxDepth = Infinity,
-    showTabs = true,
+    canExecute,
+    dnd,
+    maxDepth,
+    showTabs,
+    toolbar = defaultLaymanToolbar,
     viewId,
+    ariaLabel,
+    rootClassName,
+    rootStyle = {},
+    renderToolbarFrame = ({children}: LaymanToolbarFrameProps) => children,
     children,
-}: LaymanProviderProps) => {
-    const generatedViewId = useRef<string | null>(null);
-    if (generatedViewId.current === null) generatedViewId.current = createViewId();
-    const resolvedViewId = viewId ?? generatedViewId.current;
-    const [{layout, floatingWindows}, layoutDispatch] = useReducer(
-        LaymanReducer,
-        {layout: initialLayout, floatingWindows: []},
-        (init) => loadState(storageKey, init)
-    );
-
-    const saveTimeoutRef = useRef<number | undefined>(undefined);
-    useEffect(() => {
-        if (!storageKey) return;
-        if (saveTimeoutRef.current !== undefined) {
-            window.clearTimeout(saveTimeoutRef.current);
-        }
-        saveTimeoutRef.current = window.setTimeout(() => {
-            saveState(storageKey, {layout, floatingWindows});
-            saveTimeoutRef.current = undefined;
-        }, 150);
-        return () => {
-            if (saveTimeoutRef.current !== undefined) {
-                window.clearTimeout(saveTimeoutRef.current);
-                saveTimeoutRef.current = undefined;
-                saveState(storageKey, {layout, floatingWindows});
-            }
-        };
-    }, [layout, floatingWindows, storageKey]);
-    // Size of Layman container
-    const [globalContainerSize, setGlobalContainerSize] = useState<Position>({
-        top: 0,
-        left: 0,
-        width: 0,
-        height: 0,
-    });
-    const [dropHighlightPosition, setDropHighlightPosition] = useState<Position>({
-        top: 0,
-        left: 0,
-        width: 0,
-        height: 0,
-    });
-    const [draggedWindowTabs, setDraggedWindowTabs] = useState<TabData[]>([]);
-    const [windowDragStartPosition, setWindowDragStartPosition] = useState({
-        x: 0,
-        y: 0,
-    });
-    const [globalDragging, setGlobalDragging] = useState<boolean>(false);
-    // Ephemeral UI state: which window is currently maximized.
-    const [maximizedPath, setMaximizedPath] = useState<WindowAddress | null>(null);
+}: LaymanRuntimeProps) => {
+    const [globalContainerSize, setGlobalContainerSize] = useState<Position>({top: 0, left: 0, width: 0, height: 0});
+    const [metrics, setMetrics] = useState(defaultLaymanViewMetrics);
+    const [dropHighlightPosition, setDropHighlightPosition] = useState<Position>({top: 0, left: 0, width: 0, height: 0});
+    const [draggedWindowTabs, setDraggedWindowTabs] = useState<LaymanContextType["draggedWindowTabs"]>([]);
+    const [windowDragStartPosition, setWindowDragStartPosition] = useState({x: 0, y: 0});
+    const [globalDragging, setGlobalDragging] = useState(false);
+    const [maximizedWindowId, setMaximizedWindowId] = useState<string | null>(null);
+    const [dragBorderElement, setDragBorderElement] = useState<HTMLDivElement | null>(null);
 
     return (
         <LaymanContext.Provider
             value={{
-                viewId: resolvedViewId,
                 globalContainerSize,
                 setGlobalContainerSize,
-                layout,
-                layoutDispatch,
+                metrics,
+                setMetrics,
+                layout: state.layout,
+                layoutDispatch: dispatch,
+                dropHighlightPosition,
                 setDropHighlightPosition,
                 globalDragging,
                 setGlobalDragging,
@@ -149,20 +121,29 @@ export const LaymanProvider = ({
                 setWindowDragStartPosition,
                 renderPane,
                 renderTab,
-                mutable,
-                toolbarButtons,
+                canExecute,
+                toolbar,
+                inspection,
                 renderNull,
-                maximizedPath,
-                setMaximizedPath,
-                floatingWindows,
+                maximizedWindowId,
+                setMaximizedWindowId,
+                floatingWindows: state.floatingWindows,
                 maxDepth,
                 showTabs,
+                viewId,
+                ariaLabel,
+                rootClassName,
+                rootStyle,
+                dragBorderElement,
+                setDragBorderElement,
+                renderToolbarFrame,
             }}
         >
-            <DndProvider backend={HTML5Backend}>
-                <DropHighlight position={dropHighlightPosition} isDragging={globalDragging} />
+            <LaymanDndProvider config={dnd}>
                 {children}
-            </DndProvider>
+            </LaymanDndProvider>
         </LaymanContext.Provider>
     );
 };
+
+export const LaymanContext = createContext<LaymanContextType>(defaultContextValue);

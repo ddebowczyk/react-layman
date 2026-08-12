@@ -23,10 +23,10 @@ interface ResizeInteraction {
  * because their size comes from the split tree, is free-form resizing from
  * an edge/corner. That's the only floating-specific chrome left: a thin,
  * absolutely-positioned overlay spanning the floating window's current rect
- * with 8 drag handles that dispatch `setFloatingWindowPosition`.
+ * with 8 drag handles that dispatch `floating.position` commands.
  */
 function FloatingWindowResizeHandles({data}: {data: FloatingWindowData}) {
-    const {layoutDispatch} = useContext(LaymanContext);
+    const {canExecute, layoutDispatch} = useContext(LaymanContext);
     const interactionRef = useRef<ResizeInteraction | null>(null);
 
     useEffect(() => {
@@ -50,8 +50,8 @@ function FloatingWindowResizeHandles({data}: {data: FloatingWindowData}) {
             }
 
             layoutDispatch({
-                type: "setFloatingWindowPosition",
-                floatingId: data.id,
+                type: "floating.position",
+                windowId: data.id,
                 position: {top, left, width, height},
             });
         };
@@ -76,7 +76,8 @@ function FloatingWindowResizeHandles({data}: {data: FloatingWindowData}) {
     const startResize = (dir: ResizeDir) => (event: React.MouseEvent) => {
         event.preventDefault();
         event.stopPropagation();
-        layoutDispatch({type: "bringFloatingWindowToFront", floatingId: data.id});
+        if (canExecute({type: "floating.position", windowId: data.id, position: data.position}).kind === "deny") return;
+        layoutDispatch({type: "floating.focus", windowId: data.id});
         interactionRef.current = {dir, startX: event.clientX, startY: event.clientY, startPos: data.position};
     };
 
@@ -94,13 +95,16 @@ function FloatingWindowResizeHandles({data}: {data: FloatingWindowData}) {
                 zIndex: data.zIndex + 1,
                 pointerEvents: "none",
             }}
+            data-layman-component="floating-resize-layer"
+            data-layman-window={data.id}
         >
             {resizeHandles.map((dir) => (
                 <div
                     key={dir}
-                    aria-label={`Resize floating window ${dir}`}
                     className={`layman-floating-resize ${dir}`}
                     onMouseDown={startResize(dir)}
+                    data-layman-component="floating-resize-handle"
+                    data-layman-resize-direction={dir}
                 ></div>
             ))}
         </div>

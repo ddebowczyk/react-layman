@@ -1,10 +1,21 @@
 {
     "name": "react-layman",
-    "version": "0.3.0",
+    "version": "0.4.0",
+    "engines": {
+        "node": ">=20.19.0 <27"
+    },
     "type": "module",
     "description": "A dynamic tiling layout manager made for React",
     "main": "lib/react-layman.js",
     "types": "lib/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./lib/index.d.ts",
+            "import": "./lib/react-layman.js",
+            "default": "./lib/react-layman.js"
+        },
+        "./styles.css": "./lib/index.css"
+    },
     "files": [
         "lib"
     ],
@@ -14,12 +25,15 @@
     "scripts": {
         "dev": "vite",
         "build:demo": "tsc && vite build",
+        "typecheck:tauri-example": "tsc --project examples/tauri/tsconfig.json",
         "preview": "vite preview",
         "build:lib": "tsc --project tsconfig-build.json && vite build --config vite.lib.config.ts",
         "clean": "rm -rf lib/",
         "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
         "test": "vitest run",
         "test:watch": "vitest",
+        "typecheck:consumer": "npm run build:lib && tsc --project tests/package-consumer/tsconfig.json",
+        "check:package": "node scripts/check-package.mjs",
         "prepublishOnly": "npm run build:lib"
     },
     "repository": {
@@ -37,14 +51,12 @@
     ],
     "author": "Jeshwin Prince",
     "license": "MIT",
-    "engines": {
-        "node": "^20.19.0 || ^22.13.0 || >=24.0.0"
-    },
     "bugs": {
         "url": "https://github.com/Jeshwin/react-layman/issues"
     },
     "homepage": "https://github.com/Jeshwin/react-layman#readme",
     "dependencies": {
+        "dnd-core": "^16.0.1",
         "react-dnd": "^16.0.1",
         "react-dnd-html5-backend": "^16.0.1"
     },
@@ -63,6 +75,7 @@
         "eslint-plugin-react-refresh": "^0.4.6",
         "jsdom": "^29.1.1",
         "react": "^18",
+        "react-dnd-test-backend": "^16.0.1",
         "react-dom": "^18",
         "typescript": "^5.7.2",
         "vite": "^8.0.16",

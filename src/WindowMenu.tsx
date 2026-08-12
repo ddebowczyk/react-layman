@@ -1,37 +1,28 @@
 import {useContext} from "react";
 import {LaymanContext} from "./LaymanContext";
 import {ToolbarButton} from "./ToolbarButton";
-import {TabData} from "./TabData";
-import {AddIcon, CloseIcon, EllipsisIcon} from "./Icons";
-import {Position, WindowAddress} from "./types";
-import {useLaymanView} from "./LaymanViewContext";
-import {readLaymanStyleNumber} from "./viewMetrics";
+import {CloseIcon, EllipsisIcon} from "./Icons";
+import {LaymanTab, Position} from "./types";
 
 interface WindowMenuProps {
-    path: WindowAddress;
+    windowId: string;
     position: Position;
-    tabs: TabData[];
-    selectedIndex: number;
+    tabs: readonly LaymanTab[];
+    selectedTabId: string | null;
     open: boolean;
     setOpen: (open: boolean) => void;
-    // Pre-rendered window control buttons (maximize/float/close/etc.).
-    controlButtons: React.ReactNode;
+    controls: React.ReactNode;
 }
 
 /**
  * Compact window controls used when `showTabs` is false. Renders a single
- * square ellipsis button in the window's top-right corner; clicking it opens a
- * popover that exposes tab selection, adding tabs, and the window control
- * buttons that would otherwise live in the toolbar.
+ * square ellipsis button in the window's top-right corner. The supplied
+ * toolbar configuration defines the entire control set in its popover.
  */
-export function WindowMenu({path, position, tabs, selectedIndex, open, setOpen, controlButtons}: WindowMenuProps) {
-    const {layoutDispatch, renderTab, mutable} = useContext(LaymanContext);
-    const {rootRef} = useLaymanView();
+export function WindowMenu({windowId, position, tabs, selectedTabId, open, setOpen, controls}: WindowMenuProps) {
+    const {canExecute, layoutDispatch, renderTab, metrics} = useContext(LaymanContext);
 
-    // parseInt returns NaN (not null/undefined) when the CSS variable is missing,
-    // so the fallback must use || rather than ?? to actually take effect.
-    const cssToolbarHeight = readLaymanStyleNumber(rootRef.current, "--toolbar-height", 64);
-    const separatorThickness = readLaymanStyleNumber(rootRef.current, "--separator-thickness", 8);
+    const {toolbarHeight: cssToolbarHeight, separatorThickness} = metrics;
 
     const buttonSize = cssToolbarHeight;
 
@@ -44,10 +35,13 @@ export function WindowMenu({path, position, tabs, selectedIndex, open, setOpen, 
                 left: position.left + position.width - buttonSize - separatorThickness,
                 zIndex: 8,
             }}
+            data-layman-component="window-menu"
+            data-layman-window={windowId}
         >
             <ToolbarButton
                 className="toolbar-button layman-window-menu-trigger"
-                aria-label="More window actions"
+                aria-label={open ? "Close window controls" : "Open window controls"}
+                aria-expanded={open}
                 onClick={() => setOpen(!open)}
                 style={{width: buttonSize, height: buttonSize}}
             >
@@ -56,45 +50,35 @@ export function WindowMenu({path, position, tabs, selectedIndex, open, setOpen, 
             {open && (
                 <div className="layman-window-menu-popover">
                     <div className="layman-window-menu-tabs">
-                        {tabs.map((tab, index) => (
+                        {tabs.map((tab) => (
                             <div
                                 key={tab.id}
-                                className={`layman-window-menu-tab ${index === selectedIndex ? "selected" : ""}`}
+                                className={`layman-window-menu-tab ${tab.id === selectedTabId ? "selected" : ""}`}
                             >
                                 <button
+                                    type="button"
                                     className="tab-selector"
-                                    onMouseDown={() => {
-                                        layoutDispatch({type: "selectTab", path, tab});
+                                    disabled={canExecute({type: "tab.select", tabId: tab.id}).kind === "deny"}
+                                    onClick={() => {
+                                        layoutDispatch({type: "tab.select", tabId: tab.id});
                                         setOpen(false);
                                     }}
                                 >
-                                    {renderTab(tab)}
+                                    {renderTab(tab, windowId, tab.id === selectedTabId)}
                                 </button>
-                                {mutable && (
-                                    <button
-                                        className="close-tab"
-                                        aria-label={`Close ${tab.name}`}
-                                        onClick={() => layoutDispatch({type: "removeTab", path, tab})}
-                                    >
-                                        <CloseIcon />
-                                    </button>
-                                )}
+                                <button
+                                    type="button"
+                                    aria-label={`Close ${tab.title}`}
+                                    className="close-tab"
+                                    disabled={canExecute({type: "tab.remove", tabId: tab.id}).kind === "deny"}
+                                    onClick={() => layoutDispatch({type: "tab.remove", tabId: tab.id})}
+                                >
+                                    <CloseIcon />
+                                </button>
                             </div>
                         ))}
                     </div>
-                    <div className="layman-window-menu-controls">
-                        <ToolbarButton
-                            aria-label="Add tab"
-                            onClick={() => {
-                                const newTab = new TabData("blank");
-                                layoutDispatch({type: "addTab", path, tab: newTab});
-                                layoutDispatch({type: "selectTab", path, tab: newTab});
-                            }}
-                        >
-                            <AddIcon />
-                        </ToolbarButton>
-                        {controlButtons}
-                    </div>
+                    <div className="layman-window-menu-controls">{controls}</div>
                 </div>
             )}
         </div>

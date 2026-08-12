@@ -1,13 +1,13 @@
 import {useContext} from "react";
 import {useDragLayer, useDrop} from "react-dnd";
-import {WindowType} from ".";
+import type {Identifier} from "dnd-core";
+import {windowDragType} from "./dnd/items";
 import {LaymanContext} from "./LaymanContext";
 import {findWindowRectAtPoint} from "./layoutGeometry";
-import {DragData, LaymanPath, Position} from "./types";
+import {DragData, Position} from "./types";
 import {isFloatingAddress} from "./utils";
 import {BottomSplitIcon, LeftSplitIcon, RightSplitIcon, TopSplitIcon, UnfloatIcon} from "./Icons";
-import {useLaymanView} from "./LaymanViewContext";
-import {readLaymanStyleNumber} from "./viewMetrics";
+import type {LaymanCommand, WindowTarget} from "./core/commands";
 
 // Fixed pixel sizes for the drop-zone overlays shown while dragging a floating
 // window. These are deliberately constant (not relative to container size) so
@@ -25,6 +25,15 @@ const EDGE_ICONS: Record<Edge, () => JSX.Element> = {
     left: LeftSplitIcon,
     right: RightSplitIcon,
 };
+
+function floatingWindowMoveCommand(
+    item: DragData,
+    target: WindowTarget,
+    placement: Edge | "center"
+): LaymanCommand | undefined {
+    if (!("tabs" in item) || !isFloatingAddress(item.path)) return undefined;
+    return {type: "window.move", windowId: item.id, target, placement};
+}
 
 /** Computes the container-relative rect for one of the 4 fixed edge zones. */
 function edgeZoneRect(edge: Edge, container: {width: number; height: number}, inset: number): Position {
@@ -52,30 +61,30 @@ function edgeZoneRect(edge: Edge, container: {width: number; height: number}, in
 
 /** One of the 4 fixed edge zones: docks the dragged floating window at the
  *  root of the layout, on that edge (splitting the root only if it isn't
- *  already a matching-direction split - see `treeAddWindow`). */
-function FloatingEdgeZone({edge, container, inset}: {edge: Edge; container: {width: number; height: number}; inset: number}) {
-    const {layoutDispatch} = useContext(LaymanContext);
-    const [{isOver}, drop] = useDrop<DragData, void, {isOver: boolean}>(() => ({
-        accept: [WindowType],
-        canDrop: (item) => "tabs" in item && isFloatingAddress(item.path),
-        drop: (item) => {
-            if (!("tabs" in item)) return;
-            layoutDispatch({
-                type: "moveWindow",
-                path: item.path,
-                newPath: [],
-                window: {tabs: item.tabs, selectedIndex: item.selectedIndex},
-                placement: edge,
-            });
+ *  already a matching-direction split). */
+function FloatingEdgeZone({edge, container}: {edge: Edge; container: {width: number; height: number}}) {
+    const {layoutDispatch, canExecute, metrics} = useContext(LaymanContext);
+    const [{isOver, handlerId}, drop] = useDrop<DragData, void, {isOver: boolean; handlerId: Identifier | null}>(() => ({
+        accept: [windowDragType],
+        canDrop: (item) => {
+            const command = floatingWindowMoveCommand(item, {kind: "root"}, edge);
+            return command !== undefined && canExecute(command).kind === "allow";
         },
-        collect: (monitor) => ({isOver: monitor.isOver()}),
+        drop: (item) => {
+            const command = floatingWindowMoveCommand(item, {kind: "root"}, edge);
+            if (command) layoutDispatch(command);
+        },
+        collect: (monitor) => ({isOver: monitor.isOver(), handlerId: monitor.getHandlerId()}),
     }));
     const Icon = EDGE_ICONS[edge];
     return (
         <div
             ref={drop}
             className={`layman-floating-anchor ${edge} ${isOver ? "over" : ""}`}
-            style={{position: "absolute", ...edgeZoneRect(edge, container, inset)}}
+            style={{position: "absolute", ...edgeZoneRect(edge, container, metrics.dockZoneInset)}}
+            data-layman-component="dock-zone"
+            data-layman-dock-edge={edge}
+            data-layman-drop-target={handlerId ?? undefined}
         >
             <Icon />
         </div>
@@ -85,25 +94,22 @@ function FloatingEdgeZone({edge, container, inset}: {edge: Edge; container: {wid
 /** The 5th, dynamic zone: appears centered over whichever tiled window the
  *  cursor is currently over, and merges the dragged floating window's tabs
  *  into it. */
-function FloatingCenterZone({path, position}: {path: LaymanPath; position: Position}) {
-    const {layoutDispatch} = useContext(LaymanContext);
-    const [{isOver}, drop] = useDrop<DragData, void, {isOver: boolean}>(
+function FloatingCenterZone({windowId, position}: {windowId: string; position: Position}) {
+    const {layoutDispatch, canExecute} = useContext(LaymanContext);
+    const [{isOver, handlerId}, drop] = useDrop<DragData, void, {isOver: boolean; handlerId: Identifier | null}>(
         () => ({
-            accept: [WindowType],
-            canDrop: (item) => "tabs" in item && isFloatingAddress(item.path),
-            drop: (item) => {
-                if (!("tabs" in item)) return;
-                layoutDispatch({
-                    type: "moveWindow",
-                    path: item.path,
-                    newPath: path,
-                    window: {tabs: item.tabs, selectedIndex: item.selectedIndex},
-                    placement: "center",
-                });
+            accept: [windowDragType],
+            canDrop: (item) => {
+                const command = floatingWindowMoveCommand(item, {kind: "window", windowId}, "center");
+                return command !== undefined && canExecute(command).kind === "allow";
             },
-            collect: (monitor) => ({isOver: monitor.isOver()}),
+            drop: (item) => {
+                const command = floatingWindowMoveCommand(item, {kind: "window", windowId}, "center");
+                if (command) layoutDispatch(command);
+            },
+            collect: (monitor) => ({isOver: monitor.isOver(), handlerId: monitor.getHandlerId()}),
         }),
-        [path]
+        [windowId]
     );
     const size = {
         width: Math.min(CENTER_ZONE_MAX, position.width),
@@ -115,7 +121,14 @@ function FloatingCenterZone({path, position}: {path: LaymanPath; position: Posit
         ...size,
     };
     return (
-        <div ref={drop} className={`layman-floating-anchor center ${isOver ? "over" : ""}`} style={{position: "absolute", ...rect}}>
+        <div
+            ref={drop}
+            className={`layman-floating-anchor center ${isOver ? "over" : ""}`}
+            style={{position: "absolute", ...rect}}
+            data-layman-component="dock-zone"
+            data-layman-dock-edge="center"
+            data-layman-drop-target={handlerId ?? undefined}
+        >
             <UnfloatIcon />
         </div>
     );
@@ -125,7 +138,7 @@ function FloatingCenterZone({path, position}: {path: LaymanPath; position: Posit
  * Renders the 5 floating-window dock zones - the 4 root edges plus the
  * dynamic "hovered tiled window" center zone - but only while a floating
  * window's whole-window drag is in progress. Detection is derived entirely
- * from the react-dnd monitor (no extra context state needed): a `WindowType`
+ * from the react-dnd monitor (no extra context state needed): a window drag
  * item is currently being dragged whose source address is a floating
  * window's.
  *
@@ -134,14 +147,12 @@ function FloatingCenterZone({path, position}: {path: LaymanPath; position: Posit
  */
 export function FloatingDockZones() {
     const {layout, globalContainerSize, maxDepth} = useContext(LaymanContext);
-    const {rootRef} = useLaymanView();
-    const inset = readLaymanStyleNumber(rootRef.current, "--anchor-inset", 16);
 
     const {isDraggingFloat, clientOffset} = useDragLayer((monitor) => {
         const itemType = monitor.getItemType();
         const item = monitor.getItem() as DragData | null;
         const isDraggingFloat =
-            monitor.isDragging() && itemType === WindowType && !!item && "tabs" in item && isFloatingAddress(item.path);
+            monitor.isDragging() && itemType === windowDragType && !!item && "tabs" in item && isFloatingAddress(item.path);
         return {
             isDraggingFloat,
             clientOffset: monitor.getClientOffset(),
@@ -159,13 +170,13 @@ export function FloatingDockZones() {
         <>
             {maxDepth > 0 && (
                 <>
-                    <FloatingEdgeZone edge="top" container={globalContainerSize} inset={inset} />
-                    <FloatingEdgeZone edge="bottom" container={globalContainerSize} inset={inset} />
-                    <FloatingEdgeZone edge="left" container={globalContainerSize} inset={inset} />
-                    <FloatingEdgeZone edge="right" container={globalContainerSize} inset={inset} />
+                    <FloatingEdgeZone edge="top" container={globalContainerSize} />
+                    <FloatingEdgeZone edge="bottom" container={globalContainerSize} />
+                    <FloatingEdgeZone edge="left" container={globalContainerSize} />
+                    <FloatingEdgeZone edge="right" container={globalContainerSize} />
                 </>
             )}
-            {hovered && <FloatingCenterZone path={hovered.path} position={hovered.position} />}
+            {hovered && <FloatingCenterZone windowId={hovered.windowId} position={hovered.position} />}
         </>
     );
 }

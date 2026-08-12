@@ -1,4 +1,22 @@
 .layman-root {
+    --layman-separator-thickness: 4px;
+    --layman-separator-handle-color: #ffffff;
+    --layman-separator-handle-length: 16px;
+    --layman-toolbar-height: 32px;
+    --layman-toolbar-background: #1c1917;
+    --layman-toolbar-hover-background: #292524;
+    --layman-toolbar-button-hover-background: #292524;
+    --layman-window-background: #44403c;
+    --layman-tab-text-color: #ffffff;
+    --layman-tab-font-size: 14px;
+    --layman-close-tab-color: #ef444488;
+    --layman-accent-color: #ff7f11;
+    --layman-indicator-thickness: 1px;
+    --layman-border-radius: 8px;
+    --layman-floating-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    --layman-dock-zone-inset: 16px;
+    --layman-floating-resize-handle-size: 8px;
+    --layman-motion-duration: 150ms;
     overflow: hidden;
     position: relative;
     width: 100%;
@@ -8,6 +26,11 @@
         &:hover {
             cursor: pointer;
         }
+    }
+
+    button:focus-visible {
+        outline: 2px solid var(--layman-accent-color);
+        outline-offset: -2px;
     }
 }
 
@@ -20,32 +43,32 @@
     cursor: auto;
     &.layman-row-separator {
         height: auto;
-        width: var(--separator-thickness, 4px);
+        width: var(--layman-separator-thickness);
         margin-top: 0px;
-        margin-left: calc(var(--separator-thickness, 4px) / -2);
+        margin-left: calc(var(--layman-separator-thickness) / -2);
         &:hover {
             cursor: ew-resize;
         }
         div {
             border-radius: 9999px;
-            background-color: var(--separator-handle-color, #ffffff);
-            height: var(--separator-handle-length, 16px);
-            width: calc(var(--separator-thickness, 4px) / 4);
+            background-color: var(--layman-separator-handle-color);
+            height: var(--layman-separator-handle-length);
+            width: calc(var(--layman-separator-thickness) / 4);
         }
     }
     &.layman-col-separator {
-        height: var(--separator-thickness, 4px);
+        height: var(--layman-separator-thickness);
         width: auto;
-        margin-top: calc(var(--separator-thickness, 4px) / -2);
+        margin-top: calc(var(--layman-separator-thickness) / -2);
         margin-left: 0px;
         &:hover {
             cursor: ns-resize;
         }
         div {
             border-radius: 9999px;
-            background-color: var(--separator-handle-color, #ffffff);
-            height: calc(var(--separator-thickness, 4px) / 4);
-            width: var(--separator-handle-length, 16px);
+            background-color: var(--layman-separator-handle-color);
+            height: calc(var(--layman-separator-thickness) / 4);
+            width: var(--layman-separator-handle-length);
         }
     }
 }
@@ -53,12 +76,12 @@
 .layman-window {
     position: absolute;
     overflow: hidden;
-    margin: calc(var(--separator-thickness, 4px) / 2);
+    margin: calc(var(--layman-separator-thickness) / 2);
     margin-top: 0px;
-    transition: transform 150ms;
-    border-bottom-left-radius: var(--border-radius, 8px);
-    border-bottom-right-radius: var(--border-radius, 8px);
-    background-color: var(--window-bg-color, #44403c);
+    transition: transform var(--layman-motion-duration);
+    border-bottom-left-radius: var(--layman-border-radius);
+    border-bottom-right-radius: var(--layman-border-radius);
+    background-color: var(--layman-window-background);
     &.selected {
         visibility: visible;
         pointer-events: auto;
@@ -74,23 +97,23 @@
     /* Floating windows render with the exact same markup/classes as tiled
        windows, plus this subtle elevation so they read as "floating". */
     &.floating {
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-        border-radius: var(--border-radius, 8px);
+        box-shadow: var(--layman-floating-shadow);
+        border-radius: var(--layman-border-radius);
     }
 }
 
 .layman-toolbar {
     position: absolute;
-    margin: calc(var(--separator-thickness, 8px) / 2);
+    margin: calc(var(--layman-separator-thickness) / 2);
     margin-bottom: 0px;
     display: flex;
     justify-content: flex-end;
     z-index: 7;
-    transition: transform 150ms;
-    background-color: var(--toolbar-bg-color, #1c1917);
-    color: var(--tab-text-color, #ffffff);
-    border-top-left-radius: var(--border-radius, 8px);
-    border-top-right-radius: var(--border-radius, 8px);
+    transition: transform var(--layman-motion-duration);
+    background-color: var(--layman-toolbar-background);
+    color: var(--layman-tab-text-color);
+    border-top-left-radius: var(--layman-border-radius);
+    border-top-right-radius: var(--layman-border-radius);
     overflow: hidden;
     .tab-container {
         display: flex;
@@ -102,7 +125,7 @@
         scrollbar-width: none;
         /* Legacy Edge / IE */
         -ms-overflow-style: none;
-        border-top-left-radius: var(--border-radius, 8px);
+        border-top-left-radius: var(--layman-border-radius);
         /* Chromium / WebKit */
         &::-webkit-scrollbar {
             display: none;
@@ -111,45 +134,45 @@
             display: flex;
             align-items: center;
             width: fit-content;
-            height: var(--toolbar-height, 32px);
-            background-color: var(--toolbar-bg-color, #1c1917);
+            height: var(--layman-toolbar-height);
+            background-color: var(--layman-toolbar-background);
             &:first-child {
-                border-top-left-radius: var(--border-radius, 8px);
+                border-top-left-radius: var(--layman-border-radius);
             }
             &:hover {
-                background-color: var(--toolbar-hover-bg-color, #292524);
+                background-color: var(--layman-toolbar-hover-background);
             }
             &.selected {
                 position: relative;
-                background-color: var(--window-bg-color, #44403c);
-                height: calc(var(--toolbar-height, 32px) - 1);
-                border-top: 1px solid var(--indicator-color, #ff7f11);
+                background-color: var(--layman-window-background);
+                height: calc(var(--layman-toolbar-height) - var(--layman-indicator-thickness));
+                border-top: var(--layman-indicator-thickness) solid var(--layman-accent-color);
                 .close-tab {
                     display: grid;
                     place-content: center;
-                    width: calc(var(--toolbar-height, 32px) * 0.75);
-                    height: var(--toolbar-height, 32px);
-                    color: var(--tab-text-color, #ffffff);
+                    width: calc(var(--layman-toolbar-height) * 0.75);
+                    height: var(--layman-toolbar-height);
+                    color: var(--layman-tab-text-color);
                     background-color: transparent;
                     opacity: 1;
                     &:hover {
-                        background-color: var(--close-tab-color, #ef444488);
+                        background-color: var(--layman-close-tab-color);
                     }
                 }
             }
             .tab-selector {
-                padding: 0 calc(var(--toolbar-height, 32px) / 4);
+                padding: 0 calc(var(--layman-toolbar-height) / 4);
                 background-color: inherit;
-                color: var(--tab-text-color, #ffffff);
-                font-size: var(--tab-font-size, 14px);
-                line-height: calc(var(--tab-font-size, 14px) * 1.2);
+                color: var(--layman-tab-text-color);
+                font-size: var(--layman-tab-font-size);
+                line-height: calc(var(--layman-tab-font-size) * 1.2);
             }
             .close-tab {
                 display: grid;
                 place-content: center;
-                width: calc(var(--toolbar-height, 32px) * 0.75);
-                height: var(--toolbar-height, 32px);
-                color: var(--tab-text-color, #ffffff);
+                width: calc(var(--layman-toolbar-height) * 0.75);
+                height: var(--layman-toolbar-height);
+                color: var(--layman-tab-text-color);
                 background-color: inherit;
                 opacity: 0;
                 &:hover {
@@ -178,16 +201,20 @@
     }
 
     button.toolbar-button {
-        min-width: var(--toolbar-height, 32px);
-        height: var(--toolbar-height, 32px);
+        min-width: var(--layman-toolbar-height);
+        height: var(--layman-toolbar-height);
         display: flex;
         align-items: center;
         justify-content: center;
-        color: var(--tab-text-color, #ffffff);
-        background-color: var(--toolbar-bg-color, #1c1917);
+        color: var(--layman-tab-text-color);
+        background-color: var(--layman-toolbar-background);
         &:hover {
             cursor: pointer;
-            background-color: var(--toolbar-button-hover-bg-color, #292524);
+            background-color: var(--layman-toolbar-button-hover-background);
+        }
+        &:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
         }
     }
 
@@ -195,15 +222,32 @@
         display: flex;
         /* position: absolute;
         right: 0; */
-        border-top-right-radius: var(--border-radius, 8px);
+        border-top-right-radius: var(--layman-border-radius);
+    }
+
+    .layman-toolbar-overflow {
+        position: relative;
+        display: flex;
+        .layman-toolbar-overflow-popover {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            display: flex;
+            min-width: max-content;
+            background-color: var(--layman-toolbar-background);
+            color: var(--layman-tab-text-color);
+            border-radius: var(--layman-border-radius);
+            overflow: hidden;
+            box-shadow: var(--layman-floating-shadow);
+        }
     }
 
     /* Floating windows render with the exact same markup/classes as tiled
        windows, plus this subtle elevation so they read as "floating". */
     &.floating {
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-        border-top-left-radius: var(--border-radius, 8px);
-        border-top-right-radius: var(--border-radius, 8px);
+        box-shadow: var(--layman-floating-shadow);
+        border-top-left-radius: var(--layman-border-radius);
+        border-top-right-radius: var(--layman-border-radius);
     }
 }
 
@@ -214,61 +258,60 @@
     .layman-floating-resize {
         position: absolute;
         pointer-events: auto;
-        --handle: 8px;
         &.n {
             top: 0;
-            left: var(--handle);
-            right: var(--handle);
-            height: var(--handle);
+            left: var(--layman-floating-resize-handle-size);
+            right: var(--layman-floating-resize-handle-size);
+            height: var(--layman-floating-resize-handle-size);
             cursor: ns-resize;
         }
         &.s {
             bottom: 0;
-            left: var(--handle);
-            right: var(--handle);
-            height: var(--handle);
+            left: var(--layman-floating-resize-handle-size);
+            right: var(--layman-floating-resize-handle-size);
+            height: var(--layman-floating-resize-handle-size);
             cursor: ns-resize;
         }
         &.e {
-            top: var(--handle);
-            bottom: var(--handle);
+            top: var(--layman-floating-resize-handle-size);
+            bottom: var(--layman-floating-resize-handle-size);
             right: 0;
-            width: var(--handle);
+            width: var(--layman-floating-resize-handle-size);
             cursor: ew-resize;
         }
         &.w {
-            top: var(--handle);
-            bottom: var(--handle);
+            top: var(--layman-floating-resize-handle-size);
+            bottom: var(--layman-floating-resize-handle-size);
             left: 0;
-            width: var(--handle);
+            width: var(--layman-floating-resize-handle-size);
             cursor: ew-resize;
         }
         &.ne {
             top: 0;
             right: 0;
-            width: var(--handle);
-            height: var(--handle);
+            width: var(--layman-floating-resize-handle-size);
+            height: var(--layman-floating-resize-handle-size);
             cursor: nesw-resize;
         }
         &.nw {
             top: 0;
             left: 0;
-            width: var(--handle);
-            height: var(--handle);
+            width: var(--layman-floating-resize-handle-size);
+            height: var(--layman-floating-resize-handle-size);
             cursor: nwse-resize;
         }
         &.se {
             bottom: 0;
             right: 0;
-            width: var(--handle);
-            height: var(--handle);
+            width: var(--layman-floating-resize-handle-size);
+            height: var(--layman-floating-resize-handle-size);
             cursor: nwse-resize;
         }
         &.sw {
             bottom: 0;
             left: 0;
-            width: var(--handle);
-            height: var(--handle);
+            width: var(--layman-floating-resize-handle-size);
+            height: var(--layman-floating-resize-handle-size);
             cursor: nesw-resize;
         }
     }
@@ -276,28 +319,28 @@
 
 .layman-window-menu {
     .layman-window-menu-trigger {
-        border-radius: var(--border-radius, 8px);
-        background-color: var(--toolbar-bg-color, #1c1917);
-        color: var(--tab-text-color, #ffffff);
+        border-radius: var(--layman-border-radius);
+        background-color: var(--layman-toolbar-background);
+        color: var(--layman-tab-text-color);
         opacity: 0.85;
         &:hover {
             opacity: 1;
-            background-color: var(--toolbar-button-hover-bg-color, #292524);
+            background-color: var(--layman-toolbar-button-hover-background);
         }
     }
     .layman-window-menu-popover {
         position: absolute;
         top: 100%;
         right: 0;
-        margin-top: calc(var(--separator-thickness, 8px) / 2);
+        margin-top: calc(var(--layman-separator-thickness) / 2);
         display: flex;
         flex-direction: column;
         min-width: max-content;
-        background-color: var(--toolbar-bg-color, #1c1917);
-        color: var(--tab-text-color, #ffffff);
-        border-radius: var(--border-radius, 8px);
+        background-color: var(--layman-toolbar-background);
+        color: var(--layman-tab-text-color);
+        border-radius: var(--layman-border-radius);
         overflow: hidden;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        box-shadow: var(--layman-floating-shadow);
         .layman-window-menu-tabs {
             display: flex;
             flex-direction: column;
@@ -306,33 +349,33 @@
                 align-items: center;
                 justify-content: space-between;
                 &.selected {
-                    background-color: var(--window-bg-color, #44403c);
-                    border-top: 1px solid var(--indicator-color, #ff7f11);
+                    background-color: var(--layman-window-background);
+                    border-top: var(--layman-indicator-thickness) solid var(--layman-accent-color);
                 }
                 &:first-child {
-                    border-top-right-radius: var(--border-radius, 8px);
-                    border-top-left-radius: var(--border-radius, 8px);
+                    border-top-right-radius: var(--layman-border-radius);
+                    border-top-left-radius: var(--layman-border-radius);
                 }
                 &:hover {
-                    background-color: var(--toolbar-hover-bg-color, #292524);
+                    background-color: var(--layman-toolbar-hover-background);
                 }
                 .tab-selector {
                     flex: 1;
                     text-align: left;
-                    padding: calc(var(--toolbar-height, 32px) / 4);
+                    padding: calc(var(--layman-toolbar-height) / 4);
                     background-color: transparent;
-                    color: var(--tab-text-color, #ffffff);
-                    font-size: var(--tab-font-size, 14px);
+                    color: var(--layman-tab-text-color);
+                    font-size: var(--layman-tab-font-size);
                 }
                 .close-tab {
                     display: grid;
                     place-content: center;
-                    width: calc(var(--toolbar-height, 32px) * 0.75);
-                    height: var(--toolbar-height, 32px);
-                    color: var(--tab-text-color, #ffffff);
+                    width: calc(var(--layman-toolbar-height) * 0.75);
+                    height: var(--layman-toolbar-height);
+                    color: var(--layman-tab-text-color);
                     background-color: transparent;
                     &:hover {
-                        background-color: var(--close-tab-color, #ef444488);
+                        background-color: var(--layman-close-tab-color);
                     }
                 }
             }
@@ -342,16 +385,16 @@
             justify-content: flex-end;
 
             button.toolbar-button {
-                min-width: var(--toolbar-height, 32px);
-                height: var(--toolbar-height, 32px);
+                min-width: var(--layman-toolbar-height);
+                height: var(--layman-toolbar-height);
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                color: var(--tab-text-color, #ffffff);
-                background-color: var(--toolbar-bg-color, #1c1917);
+                color: var(--layman-tab-text-color);
+                background-color: var(--layman-toolbar-background);
                 &:hover {
                     cursor: pointer;
-                    background-color: var(--toolbar-button-hover-bg-color, #292524);
+                    background-color: var(--layman-toolbar-button-hover-background);
                 }
             }
         }
@@ -393,18 +436,18 @@
 }
 
 .layman-drop-highlight {
-    margin: calc(var(--separator-thickness, 4px) / 2);
-    border-radius: var(--border-radius, 8px);
+    margin: calc(var(--layman-separator-thickness) / 2);
+    border-radius: var(--layman-border-radius);
     margin-top: 0px;
     position: absolute;
     transition:
-        width 150ms ease-in-out,
-        height 150ms ease-in-out,
-        top 150ms ease-in-out,
-        left 150ms ease-in-out,
-        opacity 150ms ease-in-out 200ms;
+        width var(--layman-motion-duration) ease-in-out,
+        height var(--layman-motion-duration) ease-in-out,
+        top var(--layman-motion-duration) ease-in-out,
+        left var(--layman-motion-duration) ease-in-out,
+        opacity var(--layman-motion-duration) ease-in-out;
     z-index: 11;
-    background-color: var(--indicator-color, #ff7f11);
+    background-color: var(--layman-accent-color);
     pointer-events: none;
 }
 
@@ -417,15 +460,25 @@
     z-index: 1000;
     display: grid;
     place-content: center;
-    border-radius: var(--border-radius, 8px);
-    transition: opacity 150ms ease-in-out;
-    color: var(--indicator-color, #ff7f11);
+    border-radius: var(--layman-border-radius);
+    transition: opacity var(--layman-motion-duration) ease-in-out;
+    color: var(--layman-accent-color);
     font-size: 48px;
     pointer-events: auto;
     opacity: 0.5;
     &.over {
         /* border-style: solid; */
-        /* background-color: var(--indicator-color, #ff7f11); */
+        /* background-color: var(--layman-accent-color); */
         opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .layman-root {
+        --layman-motion-duration: 0ms;
+    }
+
+    .layman-root .tab-container {
+        scroll-behavior: auto;
     }
 }

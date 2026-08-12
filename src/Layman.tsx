@@ -1,4 +1,4 @@
-import {useCallback, useContext, useEffect, useMemo, useRef, useState} from "react";
+import {useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef} from "react";
 import {WindowToolbar} from "./WindowToolbar";
 import {Window} from "./Window";
 import {LaymanLayout, LaymanPath, ToolBarProps, WindowProps, Position, SeparatorProps} from "./types";
@@ -7,35 +7,52 @@ import {Separator} from "./Separator";
 import {addressKey} from "./utils";
 import {FloatingResizeHandleLayer} from "./FloatingWindow";
 import {FloatingDockZones} from "./FloatingDockZones";
-import {LaymanViewScope} from "./LaymanViewContext";
-import {measureLaymanRoot} from "./viewMetrics";
+import {readLaymanViewMetrics, sameLaymanViewMetrics} from "./view/metrics";
+import {DropHighlight} from "./DropHighlight";
 
 /**
  * Entry point for Layman Window Manager
  */
-export function Layman() {
-    const {viewId, globalContainerSize, setGlobalContainerSize, layout, renderNull, draggedWindowTabs, floatingWindows} =
-        useContext(LaymanContext);
+export function LaymanCanvas() {
+    const {
+        globalContainerSize,
+        setGlobalContainerSize,
+        setMetrics,
+        layout,
+        renderNull,
+        draggedWindowTabs,
+        floatingWindows,
+        viewId,
+        ariaLabel,
+        rootClassName,
+        rootStyle,
+        setDragBorderElement,
+        dropHighlightPosition,
+        globalDragging,
+    } = useContext(LaymanContext);
     // Reference for parent div
     const laymanRef = useRef<HTMLDivElement | null>(null);
-    const [dragBorderElement, setDragBorderElement] = useState<HTMLDivElement | null>(null);
 
-    const updateContainerSize = useCallback(() => {
-        const position = measureLaymanRoot(laymanRef.current);
-        if (position) setGlobalContainerSize(position);
-    }, [setGlobalContainerSize]);
+    const updateRootGeometry = useCallback(() => {
+        const root = laymanRef.current;
+        if (!root) return;
 
-    // Keep the shared container size in context up to date on window resize,
-    // since layout math throughout Layman is expressed in absolute pixels
-    // derived from this size rather than percentages.
-    useEffect(() => {
-        updateContainerSize();
-        window.addEventListener("resize", updateContainerSize);
+        const {top, left, width, height} = root.getBoundingClientRect();
+        setGlobalContainerSize({top, left, width, height});
+        const nextMetrics = readLaymanViewMetrics(root);
+        setMetrics((current) => (sameLaymanViewMetrics(current, nextMetrics) ? current : nextMetrics));
+    }, [setGlobalContainerSize, setMetrics]);
+
+    // Measure both the root rectangle and its local CSS metrics. This keeps
+    // layout geometry isolated when multiple themed Layman views share a page.
+    useLayoutEffect(() => {
+        updateRootGeometry();
+        window.addEventListener("resize", updateRootGeometry);
 
         return () => {
-            window.removeEventListener("resize", updateContainerSize);
+            window.removeEventListener("resize", updateRootGeometry);
         };
-    }, [updateContainerSize]);
+    }, [rootStyle, updateRootGeometry]);
 
     // Window resize alone doesn't catch every case (e.g. the container growing
     // because a flex/grid parent changed), so a ResizeObserver watches the
@@ -44,14 +61,14 @@ export function Layman() {
         if (!laymanRef.current) return;
         const laymanContainer = laymanRef.current;
 
-        const resizeObserver = new ResizeObserver(updateContainerSize);
+        const resizeObserver = new ResizeObserver(updateRootGeometry);
 
         resizeObserver.observe(laymanContainer);
 
         return () => {
             resizeObserver.disconnect();
         };
-    }, [updateContainerSize]);
+    }, [updateRootGeometry]);
 
     // Derive component lists from layout
     const {toolbars, windows, separators} = useMemo(() => {
@@ -66,18 +83,20 @@ export function Layman() {
             if ("tabs" in layout) {
                 // If it's a window, handle the tabs and panes
                 calculatedToolbars.push({
+                    windowId: layout.id,
                     path,
                     position,
                     tabs: layout.tabs,
-                    selectedIndex: layout.selectedIndex ?? 0,
+                    selectedTabId: layout.selectedTabId,
                 });
 
-                layout.tabs.forEach((tab, index) => {
+                layout.tabs.forEach((tab) => {
                     calculatedWindows.push({
+                        windowId: layout.id,
                         position,
                         path,
                         tab,
-                        isSelected: index == layout.selectedIndex,
+                        isSelected: tab.id === layout.selectedTabId,
                     });
                 });
                 return;
@@ -116,6 +135,7 @@ export function Layman() {
             // vary between passes below (see their call sites).
             const addSeparator = (childIndex: number, separatorIndex: number, separatorPosition: Position) => {
                 calculatedSeparators.push({
+                    splitId: layout.id,
                     nodePosition: position,
                     position: separatorPosition,
                     index: separatorIndex,
@@ -234,18 +254,20 @@ export function Layman() {
         // append them to the exact same flat lists.
         floatingWindows.forEach((floatingWindow) => {
             calculatedToolbars.push({
+                windowId: floatingWindow.id,
                 path: {floatingId: floatingWindow.id},
                 position: floatingWindow.position,
                 tabs: floatingWindow.tabs,
-                selectedIndex: floatingWindow.selectedIndex,
+                selectedTabId: floatingWindow.selectedTabId,
                 zIndex: floatingWindow.zIndex,
             });
-            floatingWindow.tabs.forEach((tab, index) => {
+            floatingWindow.tabs.forEach((tab) => {
                 calculatedWindows.push({
+                    windowId: floatingWindow.id,
                     position: floatingWindow.position,
                     path: {floatingId: floatingWindow.id},
                     tab,
-                    isSelected: index == floatingWindow.selectedIndex,
+                    isSelected: tab.id === floatingWindow.selectedTabId,
                     zIndex: floatingWindow.zIndex,
                 });
             });
@@ -259,32 +281,39 @@ export function Layman() {
     }, [globalContainerSize, draggedWindowTabs, layout, floatingWindows]);
 
     return (
-        <LaymanViewScope rootRef={laymanRef} dragBorderElement={dragBorderElement}>
-            <div ref={laymanRef} className="layman-root" data-layman-view={viewId}>
-                <div ref={setDragBorderElement} className="layman-drag-window-border"></div>
-                {/* Shown behind any floating windows when the tree is empty. */}
-                {!layout && renderNull}
-                {toolbars.map((props) => (
-                    <WindowToolbar key={addressKey(props.path)} {...props} />
-                ))}
-                {windows.map((props) => (
-                    <Window key={props.tab.id} {...props} />
-                ))}
-                {separators.map((props) => (
-                    <Separator
-                        key={props.path.length != 0 ? props.path.join(":") : "root"}
-                        separators={separators} // Pass the full list
-                        {...props}
-                    />
-                ))}
-                {/* Resize handles for floating windows (their toolbar/pane render
+        <div
+            ref={laymanRef}
+            className={["layman-root", rootClassName].filter(Boolean).join(" ")}
+            style={rootStyle}
+            role="application"
+            aria-label={ariaLabel}
+            data-layman-component="root"
+            data-layman-view={viewId}
+        >
+            <div ref={setDragBorderElement} data-layman-component="drag-border-layer" />
+            <DropHighlight position={dropHighlightPosition} isDragging={globalDragging} />
+            {/* Shown behind any floating windows when the tree is empty. */}
+            {!layout && renderNull()}
+            {toolbars.map((props) => (
+                <WindowToolbar key={addressKey(props.path)} {...props} />
+            ))}
+            {windows.map((props) => (
+                <Window key={props.tab.id} {...props} />
+            ))}
+            {separators.map((props) => (
+                <Separator
+                    key={props.path.length != 0 ? props.path.join(":") : "root"}
+                    separators={separators} // Pass the full list
+                    {...props}
+                />
+            ))}
+            {/* Resize handles for floating windows (their toolbar/pane render
                 via the flat lists above, identically to tiled windows). */}
-                <FloatingResizeHandleLayer />
-                {/* Dock zones for floating-window whole-window drags (edges of
+            <FloatingResizeHandleLayer />
+            {/* Dock zones for floating-window whole-window drags (edges of
                 the root + the tiled window under the cursor); renders
                 nothing unless such a drag is in progress. */}
-                <FloatingDockZones />
-            </div>
-        </LaymanViewScope>
+            <FloatingDockZones />
+        </div>
     );
 }

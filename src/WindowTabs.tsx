@@ -1,27 +1,36 @@
 import {useContext, useEffect} from "react";
 import {ConnectDragSource, useDrag} from "react-dnd";
 import {LaymanContext} from "./LaymanContext";
-import {TabData} from "./TabData";
-import {TabType} from ".";
-import {WindowAddress} from "./types";
+import {tabDragType} from "./dnd/items";
+import {LaymanTab, WindowAddress} from "./types";
 import {CloseIcon} from "./Icons";
 
 interface TabProps {
-    tab: TabData;
+    tab: LaymanTab;
+    windowId: string;
     path: WindowAddress;
     isSelected: boolean;
-    onMouseDown: React.MouseEventHandler<HTMLButtonElement>;
+    onSelect: React.MouseEventHandler<HTMLButtonElement>;
     onDelete: React.MouseEventHandler<HTMLButtonElement>;
 }
 
-export const Tab = ({tab, path, isSelected, onDelete, onMouseDown}: TabProps) => {
-    const {renderTab, setGlobalDragging, mutable} = useContext(LaymanContext);
+export const Tab = ({tab, windowId, path, isSelected, onDelete, onSelect}: TabProps) => {
+    const {canExecute, renderTab, setGlobalDragging} = useContext(LaymanContext);
+    const selectDecision = canExecute({type: "tab.select", tabId: tab.id});
+    const removeDecision = canExecute({type: "tab.remove", tabId: tab.id});
+    const moveDecision = canExecute({
+        type: "tab.move",
+        tabId: tab.id,
+        target: {kind: "window", windowId},
+        placement: "center",
+    });
     const [{isDragging}, drag] = useDrag({
-        type: TabType,
+        type: tabDragType,
         item: {
             path,
             tab,
         },
+        canDrag: moveDecision.kind === "allow",
         collect: (monitor) => ({
             isDragging: monitor.isDragging(),
         }),
@@ -39,39 +48,48 @@ export const Tab = ({tab, path, isSelected, onDelete, onMouseDown}: TabProps) =>
                 visibility: isDragging ? "hidden" : "visible",
                 width: isDragging ? 0 : "auto",
             }}
+            data-layman-component="tab"
+            data-layman-tab={tab.id}
+            data-layman-window={windowId}
         >
-            <button className="tab-selector" onMouseDown={onMouseDown}>
-                {renderTab(tab)}
+            <button className="tab-selector" type="button" disabled={selectDecision.kind === "deny"} onClick={onSelect}>
+                {renderTab(tab, windowId, isSelected)}
             </button>
-            {mutable && (
-                <button className="close-tab" aria-label={`Close ${tab.name}`} onClick={onDelete}>
-                    <CloseIcon />
-                </button>
-            )}
+            <button type="button" aria-label={`Close ${tab.title}`} className="close-tab" disabled={removeDecision.kind === "deny"} onClick={onDelete}>
+                <CloseIcon />
+            </button>
         </div>
     );
 };
 
 interface SingleTabProps {
     dragRef: ConnectDragSource;
-    tab: TabData;
+    tab: LaymanTab;
+    windowId: string;
     onDelete: React.MouseEventHandler<HTMLButtonElement>;
+    onSelect: React.MouseEventHandler<HTMLButtonElement>;
     onMouseDown: React.MouseEventHandler<HTMLButtonElement>;
 }
 
-export const SingleTab = ({dragRef, tab, onDelete, onMouseDown}: SingleTabProps) => {
-    const {renderTab, mutable} = useContext(LaymanContext);
+export const SingleTab = ({dragRef, tab, windowId, onDelete, onMouseDown, onSelect}: SingleTabProps) => {
+    const {canExecute, renderTab} = useContext(LaymanContext);
+    const selectDecision = canExecute({type: "tab.select", tabId: tab.id});
+    const removeDecision = canExecute({type: "tab.remove", tabId: tab.id});
 
     return (
-        <div ref={dragRef} className={`tab selected`}>
-            <button className="tab-selector" onMouseDown={onMouseDown}>
-                {renderTab(tab)}
+        <div
+            ref={dragRef}
+            className="tab selected"
+            data-layman-component="tab"
+            data-layman-tab={tab.id}
+            data-layman-window={windowId}
+        >
+            <button className="tab-selector" type="button" disabled={selectDecision.kind === "deny"} onMouseDown={onMouseDown} onClick={onSelect}>
+                {renderTab(tab, windowId, true)}
             </button>
-            {mutable && (
-                <button className="close-tab" aria-label={`Close ${tab.name}`} onClick={onDelete}>
-                    <CloseIcon />
-                </button>
-            )}
+            <button type="button" aria-label={`Close ${tab.title}`} className="close-tab" disabled={removeDecision.kind === "deny"} onClick={onDelete}>
+                <CloseIcon />
+            </button>
         </div>
     );
 };

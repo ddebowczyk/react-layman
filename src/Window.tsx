@@ -2,36 +2,32 @@ import {useContext, useEffect, useState} from "react";
 import {LaymanContext} from "./LaymanContext";
 import {useDragLayer} from "react-dnd";
 import {createPortal} from "react-dom";
-import {WindowContext} from "./WindowContext";
 import {Position, WindowProps} from "./types";
-import {deepEqual, isFloatingAddress} from "./utils";
-import {useLaymanView} from "./LaymanViewContext";
-import {readLaymanStyleNumber} from "./viewMetrics";
+import {isFloatingAddress} from "./utils";
 
-export function Window({position: rawPosition, path, tab, isSelected, zIndex: floatingZIndex}: WindowProps) {
+export function Window({windowId, position: rawPosition, path, tab, isSelected, zIndex: floatingZIndex}: WindowProps) {
     const {
         globalContainerSize,
+        metrics,
         renderPane,
         draggedWindowTabs,
         windowDragStartPosition,
-        maximizedPath,
+        maximizedWindowId,
         showTabs,
         layoutDispatch,
+        canExecute,
+        dragBorderElement,
     } = useContext(LaymanContext);
-    const {dragBorderElement, rootRef} = useLaymanView();
 
     const isFloating = isFloatingAddress(path);
 
-    // parseInt returns NaN (not null/undefined) when the CSS variable is missing,
-    // so the fallback must use || rather than ?? to actually take effect.
-    const separatorThickness = readLaymanStyleNumber(rootRef.current, "--separator-thickness", 8);
-
     // When the tab row is hidden the toolbar takes no vertical space, so the pane
     // fills the entire window region.
-    const windowToolbarHeight = showTabs ? readLaymanStyleNumber(rootRef.current, "--toolbar-height", 64) : 0;
+    const windowToolbarHeight = showTabs ? metrics.toolbarHeight : 0;
+    const {separatorThickness} = metrics;
 
     // A maximized window overrides its layout position to fill the whole container.
-    const isMaximized = maximizedPath !== null && deepEqual(maximizedPath, path);
+    const isMaximized = maximizedWindowId === windowId;
     const position: Position = isMaximized
         ? {top: 0, left: 0, width: globalContainerSize.width, height: globalContainerSize.height}
         : rawPosition;
@@ -42,7 +38,9 @@ export function Window({position: rawPosition, path, tab, isSelected, zIndex: fl
 
     // Bring this floating window to the front when its content is interacted with.
     const bringToFront = () => {
-        if (isFloating) layoutDispatch({type: "bringFloatingWindowToFront", floatingId: path.floatingId});
+        if (isFloating && canExecute({type: "floating.focus", windowId}).kind === "allow") {
+            layoutDispatch({type: "floating.focus", windowId});
+        }
     };
 
     // Custom drag layer to track mouse position during dragging
@@ -51,10 +49,7 @@ export function Window({position: rawPosition, path, tab, isSelected, zIndex: fl
     }));
 
     // State to keep track of the current mouse position (top, left) during dragging
-    const [currentMousePosition, setCurrentMousePosition] = useState({
-        top: position.top,
-        left: position.left,
-    });
+    const [currentMousePosition, setCurrentMousePosition] = useState({top: 0, left: 0});
 
     // Effect to handle dragging logic and update the current mouse position during dragging
     useEffect(() => {
@@ -73,10 +68,6 @@ export function Window({position: rawPosition, path, tab, isSelected, zIndex: fl
         }
     }, [clientOffset, isDragging, windowDragStartPosition.x, windowDragStartPosition.y]);
 
-    if (!dragBorderElement) {
-        return null; // Don't render until portal element is available
-    }
-
     const adjustedWindowPosition: Position = {
         top: position.top + windowToolbarHeight + separatorThickness / 2 + currentMousePosition.top,
         left: position.left * scale + currentMousePosition.left,
@@ -85,8 +76,8 @@ export function Window({position: rawPosition, path, tab, isSelected, zIndex: fl
     };
 
     const borderPosition: Position = {
-        top: position.top + (windowToolbarHeight / 2) * scale + currentMousePosition.top + globalContainerSize.top,
-        left: position.left * scale + currentMousePosition.left + globalContainerSize.left,
+        top: position.top + (windowToolbarHeight / 2) * scale + currentMousePosition.top,
+        left: position.left * scale + currentMousePosition.left,
         width: position.width - separatorThickness + 2, // +2 for thickness of the border itself
         height: position.height - separatorThickness / 2,
     };
@@ -103,7 +94,6 @@ export function Window({position: rawPosition, path, tab, isSelected, zIndex: fl
 
     return (
         <div
-            id={tab.id}
             style={{
                 ...adjustedWindowPosition,
                 transform: `scale(${scale})`,
@@ -113,9 +103,13 @@ export function Window({position: rawPosition, path, tab, isSelected, zIndex: fl
             }}
             className={`layman-window ${isSelected ? "selected" : "unselected"} ${isFloating ? "floating" : ""}`}
             onMouseDown={bringToFront}
+            data-layman-component="window"
+            data-layman-window={windowId}
+            data-layman-tab={tab.id}
         >
             {isDragging &&
                 !isFloating &&
+                dragBorderElement &&
                 createPortal(
                     <div
                         style={{
@@ -124,24 +118,15 @@ export function Window({position: rawPosition, path, tab, isSelected, zIndex: fl
                             ...borderPosition,
                             transform: `scale(${scale})`,
                             transformOrigin: `${windowDragStartPosition.x}px top`,
-                            border: "1px solid var(--indicator-color, #f97316)",
-                            borderRadius: "var(--border-radius, 8px)",
+                            border: "var(--layman-indicator-thickness) solid var(--layman-accent-color)",
+                            borderRadius: "var(--layman-border-radius)",
                             pointerEvents: "none",
                             userSelect: "none",
                         }}
                     ></div>,
                     dragBorderElement
                 )}
-            <WindowContext.Provider
-                value={{
-                    position,
-                    path,
-                    tab,
-                    isSelected,
-                }}
-            >
-                {renderPane(tab)}
-            </WindowContext.Provider>
+            {renderPane(tab, windowId, isSelected)}
         </div>
     );
 }
