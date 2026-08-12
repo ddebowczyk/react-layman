@@ -4,6 +4,7 @@ export type {
     Children,
     LaymanDirection,
     LaymanPath,
+    LaymanTab,
     WindowAddress,
     FloatingWindowAddress,
     LaymanWindow,
@@ -27,9 +28,12 @@ export type {
     LaymanSerializedWindow,
     LaymanSerializedFloatingWindow,
     LaymanSerializedState,
+    LaymanSchemaVersion,
+    JsonPrimitive,
+    JsonValue,
 } from "./types";
 
-export {TabData} from "./TabData";
+export {createLaymanTab, createLaymanWindow} from "./createLaymanTab";
 
 export const TabType = "TAB";
 export const WindowType = "WINDOW";
@@ -50,4 +54,8 @@ export {
     deserializeTab,
     serializeFloatingWindow,
     deserializeFloatingWindow,
+    serializeState,
+    deserializeState,
+    validateLaymanSnapshot,
+    LAYMAN_SNAPSHOT_VERSION,
 } from "./Serializer";

@@ -1,5 +1,4 @@
 import {Dispatch, SetStateAction} from "react";
-import {TabData} from "./TabData";
 
 // Credit: https://blog.replit.com/leaky-uis
 // This is a utility type, a dynamically sized tuple
@@ -10,58 +9,61 @@ export type Children<T> = [T, T, ...T[]];
 export type LaymanDirection = "column" | "row";
 export type LaymanPath = Array<number>;
 
-export interface LaymanWindow {
-    viewPercent?: number;
-    tabs: TabData[];
-    selectedIndex?: number;
+/** A stable, serializable tab that a host application can inspect and control. */
+export interface LaymanTab<TData = unknown> {
+    id: string;
+    title: string;
+    data: TData;
 }
 
-export interface LaymanNode {
+/** A tiled window with a stable identity and an explicit selected tab. */
+export interface LaymanWindow<TData = unknown> {
+    id: string;
+    viewPercent?: number;
+    tabs: LaymanTab<TData>[];
+    /** `null` is valid only when `tabs` is empty. */
+    selectedTabId: string | null;
+}
+
+export interface LaymanNode<TData = unknown> {
     direction: LaymanDirection;
     viewPercent?: number;
-    children: Children<LaymanLayout>;
+    children: Children<LaymanLayout<TData>>;
 }
 
-export type LaymanLayout = LaymanWindow | LaymanNode | undefined;
+export type LaymanLayout<TData = unknown> = LaymanWindow<TData> | LaymanNode<TData> | undefined;
 
-// Address of a window that has been floated out of the layout tree (see
-// `FloatingWindowData`). Identified by a stable id rather than a tree
-// position, since floating windows aren't part of the split tree.
+/** A stable address for a window that is outside the tiled layout tree. */
 export interface FloatingWindowAddress {
     floatingId: string;
 }
 
-// A `WindowAddress` identifies "the window a toolbar/tab/drag operates on":
-// either a position in the split tree (`LaymanPath`, e.g. `[0, 1]`) or a
-// floating window (`{floatingId}`). This lets floating windows be addressed,
-// rendered, and dragged-and-dropped identically to regular tree windows.
+/** A temporary tree path or a stable floating-window address. */
 export type WindowAddress = LaymanPath | FloatingWindowAddress;
 
-// Define the common attributes for all actions
 export interface BaseLaymanLayoutAction {
     type: string;
     path: WindowAddress;
 }
 
-// Define the specific attributes required for each action type
 export interface AddTabAction extends BaseLaymanLayoutAction {
     type: "addTab";
-    tab: TabData;
+    tab: LaymanTab;
 }
 
 export interface RemoveTabAction extends BaseLaymanLayoutAction {
     type: "removeTab";
-    tab: TabData;
+    tab: LaymanTab;
 }
 
 export interface SelectTabAction extends BaseLaymanLayoutAction {
     type: "selectTab";
-    tab: TabData;
+    tab: LaymanTab;
 }
 
 export interface MoveTabAction extends BaseLaymanLayoutAction {
     type: "moveTab";
-    tab: TabData;
+    tab: LaymanTab;
     newPath: WindowAddress;
     placement: "top" | "bottom" | "left" | "right" | "center";
 }
@@ -85,45 +87,32 @@ export interface RemoveWindowAction extends BaseLaymanLayoutAction {
 
 export interface MoveWindowAction extends BaseLaymanLayoutAction {
     type: "moveWindow";
-    window: LaymanWindow;
     newPath: WindowAddress;
     placement: "top" | "bottom" | "left" | "right" | "center";
-    // Initial pixel rect for the new floating window. Required only when
-    // `newPath` addresses a floating window that doesn't exist yet (i.e.
-    // this is a "float this window" move rather than a merge into an
-    // already-floating window).
     position?: Position;
 }
 
-// Currently supports two heuristics
 export type LaymanHeuristic = "topleft" | "topright";
 
 export interface AddTabActionWithHeuristic {
     type: "addTabWithHeuristic";
     heuristic: LaymanHeuristic;
-    tab: TabData;
+    tab: LaymanTab;
 }
 
-export type AutoArrangeAction = {
-    type: "autoArrange";
-};
+export type AutoArrangeAction = {type: "autoArrange"};
 
-// Reposition/resize a floating window (e.g. dragging an edge/corner resize
-// handle, or relocating it after a docking drag that didn't land on a drop
-// target).
 export interface SetFloatingWindowPositionAction {
     type: "setFloatingWindowPosition";
     floatingId: string;
     position: Position;
 }
 
-// Raise a floating window's z-index above its siblings (click-to-focus).
 export interface BringFloatingWindowToFrontAction {
     type: "bringFloatingWindowToFront";
     floatingId: string;
 }
 
-// Union type of all possible actions
 export type LaymanLayoutAction =
     | AddTabAction
     | RemoveTabAction
@@ -146,19 +135,19 @@ export interface Position {
 }
 
 export interface DragTab {
-    tab: TabData;
+    tab: LaymanTab;
     path?: WindowAddress;
 }
 
 export interface DragWindow {
-    tabs: TabData[];
+    id: string;
+    tabs: LaymanTab[];
     path: WindowAddress;
-    selectedIndex: number;
+    selectedTabId: string | null;
 }
 
 export type DragData = DragTab | DragWindow;
 
-// Types for component props
 export interface SeparatorProps {
     nodePosition: Position;
     position: Position;
@@ -167,25 +156,26 @@ export interface SeparatorProps {
     path: LaymanPath;
     separators?: SeparatorProps[];
 }
+
 export interface ToolBarProps {
+    windowId: string;
     path: WindowAddress;
     position: Position;
-    tabs: TabData[];
-    selectedIndex: number;
-    // z-index override, used only for floating windows.
-    zIndex?: number;
-}
-export interface WindowProps {
-    position: Position;
-    path: WindowAddress;
-    tab: TabData;
-    isSelected: boolean;
-    // z-index override, used only for floating windows.
+    tabs: LaymanTab[];
+    selectedTabId: string | null;
     zIndex?: number;
 }
 
-export type PaneRenderer = (arg0: TabData) => JSX.Element;
-export type TabRenderer = (arg0: TabData) => string | JSX.Element;
+export interface WindowProps {
+    position: Position;
+    path: WindowAddress;
+    tab: LaymanTab;
+    isSelected: boolean;
+    zIndex?: number;
+}
+
+export type PaneRenderer = (tab: LaymanTab) => JSX.Element;
+export type TabRenderer = (tab: LaymanTab) => string | JSX.Element;
 
 export type ToolbarButtonType =
     | "splitLeft"
@@ -207,80 +197,69 @@ export interface LaymanContextType {
     setDropHighlightPosition: React.Dispatch<Position>;
     globalDragging: boolean;
     setGlobalDragging: React.Dispatch<boolean>;
-    draggedWindowTabs: TabData[];
-    setDraggedWindowTabs: React.Dispatch<TabData[]>;
+    draggedWindowTabs: LaymanTab[];
+    setDraggedWindowTabs: React.Dispatch<LaymanTab[]>;
     windowDragStartPosition: {x: number; y: number};
     setWindowDragStartPosition: React.Dispatch<{x: number; y: number}>;
     renderPane: PaneRenderer;
     renderTab: TabRenderer;
     mutable: boolean;
-    toolbarButtons?: Array<ToolbarButtonType>;
+    toolbarButtons?: ToolbarButtonType[];
     renderNull: JSX.Element;
-    // Address of the currently maximized window, or null if none. Ephemeral state.
     maximizedPath: WindowAddress | null;
     setMaximizedPath: React.Dispatch<React.SetStateAction<WindowAddress | null>>;
-    // Windows that have been floated out of the layout. Lives in the same
-    // reducer-managed state as `layout`; mutate it via `layoutDispatch`.
     floatingWindows: FloatingWindowData[];
-    // Maximum split-nesting depth. depth = path.length (a single root window is
-    // depth 0; each split adds 1). Splits that would exceed this are blocked.
-    // Defaults to Infinity (no limit).
     maxDepth: number;
-    // Whether the window tab row (toolbar) is shown. When false, windows are
-    // chromeless and controls move into a compact ellipsis popover.
     showTabs: boolean;
 }
 
-// A window that has been "floated" out of the layout tree and is rendered as a
-// free-floating, draggable/resizable overlay.
-export interface FloatingWindowData {
+/** A free-floating window with the same identity and selection rules as tiled windows. */
+export interface FloatingWindowData<TData = unknown> {
     id: string;
-    tabs: TabData[];
-    selectedIndex: number;
+    tabs: LaymanTab<TData>[];
+    selectedTabId: string | null;
     position: Position;
     zIndex: number;
 }
 
-// The full reducer-managed state: the split tree plus any floating windows.
-export interface LaymanState {
-    layout: LaymanLayout;
-    floatingWindows: FloatingWindowData[];
+export interface LaymanState<TData = unknown> {
+    layout: LaymanLayout<TData>;
+    floatingWindows: FloatingWindowData<TData>[];
 }
 
-export {TabData};
+export type JsonPrimitive = string | number | boolean | null;
+export type JsonValue = JsonPrimitive | JsonValue[] | {[key: string]: JsonValue};
+export type LaymanSchemaVersion = 1;
 
-// Serialization Types
+export interface LaymanSerializedTab extends LaymanTab<JsonValue> {}
 
-export type LaymanSerializedTab = {
-    name: string;
-    options: Record<string, unknown>;
-};
-
-export type LaymanSerializedWindow = {
+export interface LaymanSerializedWindow {
     kind: "window";
+    id: string;
     tabs: LaymanSerializedTab[];
-    selectedIndex: number;
+    selectedTabId: string | null;
     viewPercent?: number;
-};
+}
 
-export type LaymanSerializedNode = {
+export interface LaymanSerializedNode {
     kind: "node";
-    direction: "row" | "column";
+    direction: LaymanDirection;
     viewPercent?: number;
     children: LaymanSerializedLayout[];
-};
+}
 
 export type LaymanSerializedLayout = LaymanSerializedWindow | LaymanSerializedNode | null;
 
-export type LaymanSerializedFloatingWindow = {
+export interface LaymanSerializedFloatingWindow {
     id: string;
     tabs: LaymanSerializedTab[];
-    selectedIndex: number;
+    selectedTabId: string | null;
     position: Position;
     zIndex: number;
-};
+}
 
-export type LaymanSerializedState = {
+export interface LaymanSerializedState {
+    schemaVersion: LaymanSchemaVersion;
     layout: LaymanSerializedLayout;
     floatingWindows: LaymanSerializedFloatingWindow[];
-};
+}

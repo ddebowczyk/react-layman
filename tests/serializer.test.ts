@@ -1,155 +1,111 @@
-import {describe, it, expect} from "vitest";
+import {describe, expect, it} from "vitest";
 import {
-    serializeLayout,
     deserializeLayout,
+    deserializeState,
     deserializeTab,
     serializeFloatingWindow,
-    deserializeFloatingWindow,
+    serializeLayout,
+    serializeState,
+    validateLaymanSnapshot,
 } from "../src/Serializer";
-import {TabData} from "../src/TabData";
-import {FloatingWindowData, LaymanNode, LaymanWindow, LaymanSerializedTab} from "../src/types";
+import type {FloatingWindowData, LaymanNode, LaymanSerializedState, LaymanWindow} from "../src/types";
+import {tab, window} from "./helpers";
 
-describe("serializeLayout", () => {
-    it("returns null for an undefined layout", () => {
-        expect(serializeLayout(undefined)).toBeNull();
-    });
+describe("current snapshot serialization", () => {
+    it("serializes a window with durable window, tab, and selection identities", () => {
+        const editor = tab("Editor", {path: "/a.ts"}, "tab-editor");
+        const preview = tab("Preview", {}, "tab-preview");
+        const layout: LaymanWindow = {...window("window-editor", editor, preview), selectedTabId: preview.id};
 
-    it("serializes a window, preserving tabs, options and viewPercent", () => {
-        const window: LaymanWindow = {
-            viewPercent: 42,
-            selectedIndex: 1,
-            tabs: [new TabData("Editor", {path: "/a.ts"}), new TabData("Preview")],
-        };
-
-        expect(serializeLayout(window)).toEqual({
+        expect(serializeLayout(layout)).toEqual({
             kind: "window",
-            selectedIndex: 1,
-            viewPercent: 42,
+            id: "window-editor",
+            selectedTabId: "tab-preview",
             tabs: [
-                {name: "Editor", options: {path: "/a.ts"}},
-                {name: "Preview", options: {}},
+                {id: "tab-editor", title: "Editor", data: {path: "/a.ts"}},
+                {id: "tab-preview", title: "Preview", data: {}},
             ],
+            viewPercent: undefined,
         });
     });
 
-    it("defaults selectedIndex to 0 when omitted", () => {
-        const window: LaymanWindow = {tabs: [new TabData("Only")]};
-        const result = serializeLayout(window);
-        expect(result).toMatchObject({kind: "window", selectedIndex: 0});
-    });
-
-    it("serializes a node, preserving direction, viewPercent and recursing into children", () => {
-        const node: LaymanNode = {
-            direction: "row",
-            viewPercent: 60,
-            children: [
-                {tabs: [new TabData("Left")], selectedIndex: 0},
-                {tabs: [new TabData("Right")], selectedIndex: 0},
-            ],
-        };
-
-        expect(serializeLayout(node)).toEqual({
-            kind: "node",
-            direction: "row",
-            viewPercent: 60,
-            children: [
-                {kind: "window", selectedIndex: 0, viewPercent: undefined, tabs: [{name: "Left", options: {}}]},
-                {kind: "window", selectedIndex: 0, viewPercent: undefined, tabs: [{name: "Right", options: {}}]},
-            ],
+    it("reconstructs plain tab and window values without changing IDs", () => {
+        expect(deserializeTab({id: "tab-term", title: "Term", data: {cwd: "/tmp"}})).toEqual({
+            id: "tab-term",
+            title: "Term",
+            data: {cwd: "/tmp"},
         });
-    });
-});
 
-describe("deserializeTab", () => {
-    it("reconstructs a TabData instance with name, cloned options and a fresh id", () => {
-        const serialized: LaymanSerializedTab = {name: "Term", options: {cwd: "/tmp"}};
-        const tab = deserializeTab(serialized);
-
-        expect(tab).toBeInstanceOf(TabData);
-        expect(tab.name).toBe("Term");
-        expect(tab.options).toEqual({cwd: "/tmp"});
-        // options must be a copy, not the same reference as the serialized input
-        expect(tab.options).not.toBe(serialized.options);
-        expect(typeof tab.id).toBe("string");
-        expect(tab.id.length).toBeGreaterThan(0);
-    });
-});
-
-describe("deserializeLayout", () => {
-    it("returns undefined for a null serialized layout", () => {
-        expect(deserializeLayout(null)).toBeUndefined();
-    });
-
-    it("reconstructs a window with TabData instances", () => {
         const result = deserializeLayout({
             kind: "window",
-            selectedIndex: 2,
+            id: "window-main",
+            selectedTabId: "tab-b",
             viewPercent: 25,
-            tabs: [{name: "A", options: {}}, {name: "B", options: {flag: true}}],
-        }) as LaymanWindow;
-
-        expect(result.selectedIndex).toBe(2);
-        expect(result.viewPercent).toBe(25);
-        expect(result.tabs).toHaveLength(2);
-        expect(result.tabs[0]).toBeInstanceOf(TabData);
-        expect(result.tabs[1].options).toEqual({flag: true});
-    });
-});
-
-describe("serializeFloatingWindow / deserializeFloatingWindow", () => {
-    it("round-trips a floating window, preserving position, zIndex and tab data", () => {
-        const original: FloatingWindowData = {
-            id: "float-1",
-            selectedIndex: 1,
-            position: {top: 10, left: 20, width: 300, height: 200},
-            zIndex: 32,
-            tabs: [new TabData("A", {path: "/a"}), new TabData("B")],
-        };
-
-        const serialized = serializeFloatingWindow(original);
-        expect(serialized).toEqual({
-            id: "float-1",
-            selectedIndex: 1,
-            position: {top: 10, left: 20, width: 300, height: 200},
-            zIndex: 32,
             tabs: [
-                {name: "A", options: {path: "/a"}},
-                {name: "B", options: {}},
+                {id: "tab-a", title: "A", data: {}},
+                {id: "tab-b", title: "B", data: {flag: true}},
             ],
-        });
-
-        const restored = deserializeFloatingWindow(serialized);
-        expect(restored.id).toBe("float-1");
-        expect(restored.selectedIndex).toBe(1);
-        expect(restored.position).toEqual(original.position);
-        expect(restored.zIndex).toBe(32);
-        expect(restored.tabs).toHaveLength(2);
-        expect(restored.tabs[0]).toBeInstanceOf(TabData);
-        expect(restored.tabs[0].options).toEqual({path: "/a"});
+        }) as LaymanWindow;
+        expect(result).toMatchObject({id: "window-main", selectedTabId: "tab-b", viewPercent: 25});
+        expect(result.tabs[1]).toEqual({id: "tab-b", title: "B", data: {flag: true}});
     });
 });
 
-describe("round-trip (serialize -> deserialize)", () => {
-    it("preserves the structure and values of a nested layout", () => {
-        const original: LaymanNode = {
-            direction: "column",
-            viewPercent: 50,
-            children: [
-                {
-                    direction: "row",
-                    children: [
-                        {tabs: [new TabData("One", {x: 1})], selectedIndex: 0, viewPercent: 30},
-                        {tabs: [new TabData("Two")], selectedIndex: 0, viewPercent: 70},
-                    ],
-                },
-                {tabs: [new TabData("Three"), new TabData("Four")], selectedIndex: 1},
-            ],
+describe("versioned state snapshots", () => {
+    it("round-trips tiled and floating windows without changing stable IDs", () => {
+        const left = tab("Left", {path: "/left"}, "tab-left");
+        const right = tab("Right", {}, "tab-right");
+        const floater = tab("Floater", {kind: "note"}, "tab-float");
+        const layout: LaymanNode = {
+            direction: "row",
+            children: [window("window-left", left), window("window-right", right)],
+        };
+        const floatingWindow: FloatingWindowData = {
+            id: "window-floating",
+            tabs: [floater],
+            selectedTabId: floater.id,
+            position: {top: 10, left: 20, width: 300, height: 200},
+            zIndex: 32,
         };
 
-        const restored = deserializeLayout(serializeLayout(original));
+        const snapshot = serializeState({layout, floatingWindows: [floatingWindow]});
+        expect(snapshot.schemaVersion).toBe(1);
+        expect(serializeState(deserializeState(snapshot))).toEqual(snapshot);
+        expect(serializeFloatingWindow(floatingWindow).id).toBe("window-floating");
+    });
 
-        // Re-serializing the restored layout must equal the first serialization,
-        // i.e. the round-trip is structurally lossless (ids excluded by design).
-        expect(serializeLayout(restored)).toEqual(serializeLayout(original));
+    it("rejects old, incomplete, and internally inconsistent data", () => {
+        expect(() => deserializeState({layout: null, floatingWindows: []})).toThrow("schemaVersion");
+        expect(() => deserializeTab({id: "tab", name: "old", data: {}} as never)).toThrow("title");
+        expect(() => deserializeState({schemaVersion: 1, layout: null, floatingWindows: [], extra: true})).toThrow("unknown property");
+
+        const snapshot: LaymanSerializedState = {
+            schemaVersion: 1,
+            layout: {
+                kind: "window",
+                id: "window-shared",
+                selectedTabId: "tab-a",
+                tabs: [{id: "tab-a", title: "A", data: {}}],
+            },
+            floatingWindows: [
+                {
+                    id: "window-shared",
+                    selectedTabId: null,
+                    tabs: [],
+                    position: {top: 0, left: 0, width: 100, height: 100},
+                    zIndex: 30,
+                },
+            ],
+        };
+        expect(() => validateLaymanSnapshot(snapshot)).toThrow("duplicate window id");
+
+        snapshot.floatingWindows[0].id = "window-float";
+        snapshot.layout = {
+            kind: "window",
+            id: "window-main",
+            selectedTabId: null,
+            tabs: [{id: "tab-a", title: "A", data: {}}],
+        };
+        expect(() => validateLaymanSnapshot(snapshot)).toThrow("non-empty window must select a tab");
     });
 });

@@ -1,12 +1,10 @@
-import {useContext, useEffect, useMemo, useRef, useState} from "react";
-import {WindowType} from ".";
+import {useContext, useEffect, useRef, useState} from "react";
 import {SingleTab, Tab} from "./WindowTabs";
 import {ToolbarButton} from "./ToolbarButton";
 import {LaymanContext} from "./LaymanContext";
-import {TabData} from "./TabData";
+import {createLaymanTab, createLaymanWindow} from "./createLaymanTab";
 import {WindowDropTarget} from "./WindowDropTarget";
 import {WindowMenu} from "./WindowMenu";
-import {useDrag, useDragLayer} from "react-dnd";
 import {Position, ToolbarButtonType, ToolBarProps} from "./types";
 import {findWindowAtPoint} from "./layoutGeometry";
 import {
@@ -23,6 +21,7 @@ import {
     UnfloatIcon,
 } from "./Icons";
 import {addressKey, deepEqual, isFloatingAddress} from "./utils";
+import {useWindowDrag} from "./useWindowDrag";
 
 function usePrevious(value: number) {
     const ref = useRef(0);
@@ -32,15 +31,12 @@ function usePrevious(value: number) {
     return ref.current;
 }
 
-export function WindowToolbar({path, position: rawPosition, tabs, selectedIndex, zIndex: floatingZIndex}: ToolBarProps) {
+export function WindowToolbar({windowId, path, position: rawPosition, tabs, selectedTabId, zIndex: floatingZIndex}: ToolBarProps) {
     const {
         layout,
         layoutDispatch,
         globalContainerSize,
         globalDragging,
-        setGlobalDragging,
-        setWindowDragStartPosition,
-        setDraggedWindowTabs,
         toolbarButtons,
         maximizedPath,
         setMaximizedPath,
@@ -69,13 +65,6 @@ export function WindowToolbar({path, position: rawPosition, tabs, selectedIndex,
     // Splits create a deeper window (path.length + 1); block them at the limit.
     // Floating windows are always single-pane, so splitting never applies.
     const atMaxDepth = isFloating || path.length >= maxDepth;
-    // 1x1 transparent image for empty drag preview
-    const emptyImage = useMemo(() => {
-        const img = new Image();
-        img.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"; // 1x1 transparent GIF
-        return img;
-    }, []);
-
     // useEffect to handle scrolling when the number of tabs changes
     useEffect(() => {
         // Check if the number of tabs increased
@@ -104,103 +93,23 @@ export function WindowToolbar({path, position: rawPosition, tabs, selectedIndex,
     };
 
     // Intentionally mount-only: this establishes the initially-selected tab once,
-    // and must not re-fire every time `path`/`tabs`/`selectedIndex` change later
+    // and must not re-fire every time `path`/`tabs`/`selectedTabId` change later
     // (e.g. from user interaction), or it would override the user's own selection.
     useEffect(() => {
-        layoutDispatch({
-            type: "selectTab",
-            path: path,
-            tab: tabs[selectedIndex],
-        });
+        const selectedTab = tabs.find((tab) => tab.id === selectedTabId);
+        if (selectedTab) layoutDispatch({type: "selectTab", path, tab: selectedTab});
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Setting up drag for moving windows using react-dnd
-    const [currentMousePosition, setCurrentMousePosition] = useState({
-        top: position.top,
-        left: position.left,
-    });
-    const [dragStartPosition, setDragStartPosition] = useState({x: 0, y: 0});
-    // When a floating window's whole-window drag ends without landing on a
-    // drop target (i.e. it was just repositioned, not docked/merged
-    // elsewhere), commit its new pixel position.
-    const commitFloatingDragEnd = (monitor: {didDrop: () => boolean}) => {
-        if (isFloatingAddress(path) && !monitor.didDrop()) {
-            layoutDispatch({
-                type: "setFloatingWindowPosition",
-                floatingId: path.floatingId,
-                position: {
-                    top: position.top + currentMousePosition.top,
-                    left: position.left + currentMousePosition.left,
-                    width: position.width,
-                    height: position.height,
-                },
-            });
-        }
-    };
-    const [{isDragging}, drag, dragPreview] = useDrag({
-        type: WindowType,
-        item: {path, tabs, selectedIndex},
-        collect: (monitor) => ({
-            isDragging: monitor.isDragging(),
-        }),
-        end: (_item, monitor) => {
-            commitFloatingDragEnd(monitor);
-            setDraggedWindowTabs([]);
-            setWindowDragStartPosition({x: 0, y: 0});
-        },
-    });
-    const [{singleTabIsDragging}, singleTabDrag, singleTabDragPreview] = useDrag({
-        type: WindowType,
-        item: {path, tabs, selectedIndex},
-        collect: (monitor) => ({
-            singleTabIsDragging: monitor.isDragging(),
-        }),
-        end: (_item, monitor) => {
-            commitFloatingDragEnd(monitor);
-            setDraggedWindowTabs([]);
-            setWindowDragStartPosition({x: 0, y: 0});
-        },
-    });
-
-    // Hide default drag previews
-    useEffect(() => {
-        dragPreview(emptyImage);
-    }, [dragPreview, emptyImage]);
-
-    useEffect(() => {
-        singleTabDragPreview(emptyImage);
-    }, [singleTabDragPreview, emptyImage]);
-
-    // Custom drag layer to track mouse position during dragging
-    const {clientOffset} = useDragLayer((monitor) => ({
-        clientOffset: monitor.getClientOffset(),
-    }));
-
-    useEffect(() => {
-        if (clientOffset && (isDragging || singleTabIsDragging)) {
-            setCurrentMousePosition({
-                top: clientOffset.y - dragStartPosition.y,
-                left: clientOffset.x - dragStartPosition.x,
-            });
-        } else {
-            setCurrentMousePosition({
-                top: 0,
-                left: 0,
-            });
-        }
-    }, [clientOffset, dragStartPosition.x, dragStartPosition.y, isDragging, singleTabIsDragging]);
-
-    useEffect(() => {
-        setGlobalDragging(isDragging || singleTabIsDragging);
-    }, [isDragging, setGlobalDragging, singleTabIsDragging]);
-
-    useEffect(() => {
-        if (isDragging || singleTabIsDragging) {
-            setDraggedWindowTabs(tabs);
-            setWindowDragStartPosition(dragStartPosition);
-        }
-    }, [dragStartPosition, isDragging, setDraggedWindowTabs, setWindowDragStartPosition, singleTabIsDragging, tabs]);
+    const {
+        currentMousePosition,
+        drag,
+        dragStartPosition,
+        isDragging,
+        isSingleTabDragging: singleTabIsDragging,
+        setDragStartPosition,
+        singleTabDrag,
+    } = useWindowDrag({windowId, path, position, tabs, selectedTabId});
 
     // Floating windows aren't part of the split tree, so a whole-window drag
     // moves the real window 1:1 instead of showing a shrunken "ghost" preview.
@@ -222,15 +131,14 @@ export function WindowToolbar({path, position: rawPosition, tabs, selectedIndex,
 
     // Move this window out of the layout into a brand-new floating window,
     // keeping its current calculated size/position. Expressed as a single
-    // `moveWindow` action so the same tabs/selectedIndex move by reference -
+    // `moveWindow` action so the same tabs and selection move by reference -
     // nothing is destroyed and recreated, so pane state survives.
     const floatWindow = () => {
         if (isMaximized) setMaximizedPath(null);
         layoutDispatch({
             type: "moveWindow",
             path,
-            newPath: {floatingId: crypto.randomUUID()},
-            window: {tabs, selectedIndex},
+            newPath: {floatingId: windowId},
             placement: "center",
             position: {
                 top: rawPosition.top,
@@ -263,7 +171,6 @@ export function WindowToolbar({path, position: rawPosition, tabs, selectedIndex,
             type: "moveWindow",
             path,
             newPath: targetPath,
-            window: {tabs, selectedIndex},
             placement: "center",
         });
     };
@@ -297,10 +204,7 @@ export function WindowToolbar({path, position: rawPosition, tabs, selectedIndex,
                         layoutDispatch({
                             type: "addWindow",
                             path: path,
-                            window: {
-                                tabs: [new TabData("blank")],
-                                selectedIndex: 0,
-                            },
+                            window: createLaymanWindow([createLaymanTab("blank", {})]),
                             placement,
                         })
                     }
@@ -385,25 +289,25 @@ export function WindowToolbar({path, position: rawPosition, tabs, selectedIndex,
                     {/** Render each tab */}
                     <div ref={tabContainerRef} className="tab-container" onWheel={handleTabContainerWheel}>
                         {tabs.length > 1 ? (
-                            tabs.map((tab: TabData, index: number) => {
+                            tabs.map((tab) => {
                                 return (
                                     <Tab
-                                        key={index}
+                                        key={tab.id}
                                         path={path}
                                         tab={tab}
-                                        isSelected={index == selectedIndex}
+                                        isSelected={tab.id === selectedTabId}
                                         onDelete={() =>
                                             layoutDispatch({
                                                 type: "removeTab",
                                                 path: path,
-                                                tab: tabs[index],
+                                                tab,
                                             })
                                         }
                                         onMouseDown={() =>
                                             layoutDispatch({
                                                 type: "selectTab",
                                                 path: path,
-                                                tab: tabs[index],
+                                                tab,
                                             })
                                         }
                                     />
@@ -438,7 +342,7 @@ export function WindowToolbar({path, position: rawPosition, tabs, selectedIndex,
                     <div style={{display: "flex"}}>
                         <ToolbarButton
                             onClick={() => {
-                                const newTab = new TabData("blank");
+                                const newTab = createLaymanTab("blank", {});
                                 layoutDispatch({
                                     type: "addTab",
                                     path: path,
@@ -473,7 +377,7 @@ export function WindowToolbar({path, position: rawPosition, tabs, selectedIndex,
                     path={path}
                     position={position}
                     tabs={tabs}
-                    selectedIndex={selectedIndex}
+                    selectedTabId={selectedTabId}
                     open={menuOpen}
                     setOpen={setMenuOpen}
                     controlButtons={controlButtons}

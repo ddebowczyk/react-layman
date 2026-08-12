@@ -64,7 +64,6 @@ function FloatingEdgeZone({edge, container}: {edge: Edge; container: {width: num
                 type: "moveWindow",
                 path: item.path,
                 newPath: [],
-                window: {tabs: item.tabs, selectedIndex: item.selectedIndex},
                 placement: edge,
             });
         },
@@ -97,7 +96,6 @@ function FloatingCenterZone({path, position}: {path: LaymanPath; position: Posit
                     type: "moveWindow",
                     path: item.path,
                     newPath: path,
-                    window: {tabs: item.tabs, selectedIndex: item.selectedIndex},
                     placement: "center",
                 });
             },

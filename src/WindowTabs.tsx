@@ -1,13 +1,12 @@
 import {useContext, useEffect} from "react";
 import {ConnectDragSource, useDrag} from "react-dnd";
 import {LaymanContext} from "./LaymanContext";
-import {TabData} from "./TabData";
 import {TabType} from ".";
-import {WindowAddress} from "./types";
+import {LaymanTab, WindowAddress} from "./types";
 import {CloseIcon} from "./Icons";
 
 interface TabProps {
-    tab: TabData;
+    tab: LaymanTab;
     path: WindowAddress;
     isSelected: boolean;
     onMouseDown: React.MouseEventHandler<HTMLButtonElement>;
@@ -54,7 +53,7 @@ export const Tab = ({tab, path, isSelected, onDelete, onMouseDown}: TabProps) =>
 
 interface SingleTabProps {
     dragRef: ConnectDragSource;
-    tab: TabData;
+    tab: LaymanTab;
     onDelete: React.MouseEventHandler<HTMLButtonElement>;
     onMouseDown: React.MouseEventHandler<HTMLButtonElement>;
 }

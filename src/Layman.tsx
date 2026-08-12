@@ -70,18 +70,19 @@ export function Layman() {
             if ("tabs" in layout) {
                 // If it's a window, handle the tabs and panes
                 calculatedToolbars.push({
+                    windowId: layout.id,
                     path,
                     position,
                     tabs: layout.tabs,
-                    selectedIndex: layout.selectedIndex ?? 0,
+                    selectedTabId: layout.selectedTabId,
                 });
 
-                layout.tabs.forEach((tab, index) => {
+                layout.tabs.forEach((tab) => {
                     calculatedWindows.push({
                         position,
                         path,
                         tab,
-                        isSelected: index == layout.selectedIndex,
+                        isSelected: tab.id === layout.selectedTabId,
                     });
                 });
                 return;
@@ -238,18 +239,19 @@ export function Layman() {
         // append them to the exact same flat lists.
         floatingWindows.forEach((floatingWindow) => {
             calculatedToolbars.push({
+                windowId: floatingWindow.id,
                 path: {floatingId: floatingWindow.id},
                 position: floatingWindow.position,
                 tabs: floatingWindow.tabs,
-                selectedIndex: floatingWindow.selectedIndex,
+                selectedTabId: floatingWindow.selectedTabId,
                 zIndex: floatingWindow.zIndex,
             });
-            floatingWindow.tabs.forEach((tab, index) => {
+            floatingWindow.tabs.forEach((tab) => {
                 calculatedWindows.push({
                     position: floatingWindow.position,
                     path: {floatingId: floatingWindow.id},
                     tab,
-                    isSelected: index == floatingWindow.selectedIndex,
+                    isSelected: tab.id === floatingWindow.selectedTabId,
                     zIndex: floatingWindow.zIndex,
                 });
             });

@@ -104,10 +104,6 @@ export function WindowDropTarget({path, position, placement}: WindowDropTargetPr
                     type: "moveWindow",
                     path: item.path,
                     newPath: path,
-                    window: {
-                        tabs: item.tabs,
-                        selectedIndex: item.selectedIndex,
-                    },
                     placement: placement,
                 });
             }

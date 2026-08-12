@@ -1,8 +1,8 @@
-import {describe, it, expect, beforeEach, afterEach, vi} from "vitest";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import {loadState, saveState} from "../src/persistence";
 import {serializeLayout} from "../src/Serializer";
-import {TabData} from "../src/TabData";
-import {FloatingWindowData, LaymanNode, LaymanState, LaymanWindow} from "../src/types";
+import type {FloatingWindowData, LaymanNode, LaymanState, LaymanWindow} from "../src/types";
+import {floatingWindow, tab, window as layoutWindow} from "./helpers";
 
 const KEY = "layman-test-layout";
 
@@ -11,8 +11,8 @@ function makeLayout(): LaymanNode {
         direction: "row",
         viewPercent: 50,
         children: [
-            {tabs: [new TabData("Left", {path: "/a"})], selectedIndex: 0},
-            {tabs: [new TabData("Right")], selectedIndex: 0},
+            {...layoutWindow("window-left", tab("Left", {path: "/a"}, "tab-left")), viewPercent: 50},
+            {...layoutWindow("window-right", tab("Right", {}, "tab-right")), viewPercent: 50},
         ],
     };
 }
@@ -20,11 +20,8 @@ function makeLayout(): LaymanNode {
 function makeFloatingWindows(): FloatingWindowData[] {
     return [
         {
-            id: "float-1",
-            tabs: [new TabData("Floater", {kind: "note"})],
-            selectedIndex: 0,
+            ...floatingWindow("float-1", tab("Floater", {kind: "note"}, "tab-floater")),
             position: {top: 10, left: 20, width: 300, height: 200},
-            zIndex: 30,
         },
     ];
 }
@@ -38,72 +35,51 @@ describe("saveState / loadState", () => {
         vi.restoreAllMocks();
     });
 
-    it("saveState is a no-op when no storageKey is provided", () => {
-        saveState(undefined, {layout: makeLayout(), floatingWindows: []});
+    it("does nothing when no storage key is provided", () => {
+        const fallback: LaymanState = {layout: makeLayout(), floatingWindows: []};
+        saveState(undefined, fallback);
         expect(window.localStorage.length).toBe(0);
-    });
-
-    it("loadState returns the fallback when no storageKey is provided", () => {
-        const fallback: LaymanState = {layout: {tabs: [new TabData("Fallback")]}, floatingWindows: []};
         expect(loadState(undefined, fallback)).toBe(fallback);
     });
 
-    it("saveState writes the serialized layout as JSON under the key", () => {
+    it("writes the exact versioned layout snapshot", () => {
         const layout = makeLayout();
         saveState(KEY, {layout, floatingWindows: []});
-
-        const raw = window.localStorage.getItem(KEY);
-        expect(raw).not.toBeNull();
-        expect(JSON.parse(raw as string).layout).toEqual(serializeLayout(layout));
+        const saved = JSON.parse(window.localStorage.getItem(KEY) as string);
+        expect(saved.schemaVersion).toBe(1);
+        expect(saved.layout).toEqual(serializeLayout(layout));
     });
 
-    it("round-trips a layout through save then load", () => {
-        const layout = makeLayout();
-        const fallback: LaymanState = {layout: {tabs: []}, floatingWindows: []};
-
-        saveState(KEY, {layout, floatingWindows: []});
-        const restored = loadState(KEY, fallback);
-
-        // Structurally equal (re-serialize to ignore freshly minted tab ids).
-        expect(serializeLayout(restored.layout)).toEqual(serializeLayout(layout));
-        // Restored tabs are real TabData instances.
-        const node = restored.layout as LaymanNode;
-        const firstWindow = node.children[0] as LaymanWindow;
-        expect(firstWindow.tabs[0]).toBeInstanceOf(TabData);
-        expect(firstWindow.tabs[0].options).toEqual({path: "/a"});
-    });
-
-    it("round-trips floating windows through save then load", () => {
+    it("round-trips tiled and floating windows as plain stable values", () => {
         const layout = makeLayout();
         const floatingWindows = makeFloatingWindows();
-        const fallback: LaymanState = {layout: {tabs: []}, floatingWindows: []};
+        const fallback: LaymanState = {layout: layoutWindow("fallback", tab("Fallback", {}, "tab-fallback")), floatingWindows: []};
 
         saveState(KEY, {layout, floatingWindows});
         const restored = loadState(KEY, fallback);
 
-        expect(restored.floatingWindows).toHaveLength(1);
+        expect(serializeLayout(restored.layout)).toEqual(serializeLayout(layout));
+        const firstWindow = (restored.layout as LaymanNode).children[0] as LaymanWindow;
+        expect(firstWindow.tabs[0]).toEqual({id: "tab-left", title: "Left", data: {path: "/a"}});
         expect(restored.floatingWindows[0]).toMatchObject({
             id: "float-1",
-            selectedIndex: 0,
+            selectedTabId: "tab-floater",
             position: floatingWindows[0].position,
             zIndex: 30,
         });
-        expect(restored.floatingWindows[0].tabs[0]).toBeInstanceOf(TabData);
-        expect(restored.floatingWindows[0].tabs[0].name).toBe("Floater");
-        expect(restored.floatingWindows[0].tabs[0].options).toEqual({kind: "note"});
+        expect(restored.floatingWindows[0].tabs[0]).toEqual({id: "tab-floater", title: "Floater", data: {kind: "note"}});
     });
 
-    it("loadState returns the fallback when the key is missing in storage", () => {
-        const fallback: LaymanState = {layout: {tabs: [new TabData("Fallback")]}, floatingWindows: []};
+    it("returns the fallback and warns for missing, corrupt, or invalid stored state", () => {
+        const fallback: LaymanState = {layout: layoutWindow("fallback", tab("Fallback", {}, "tab-fallback")), floatingWindows: []};
         expect(loadState("does-not-exist", fallback)).toBe(fallback);
-    });
 
-    it("loadState returns the fallback and warns when stored JSON is corrupt", () => {
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         window.localStorage.setItem(KEY, "{not valid json");
-
-        const fallback: LaymanState = {layout: {tabs: [new TabData("Fallback")]}, floatingWindows: []};
         expect(loadState(KEY, fallback)).toBe(fallback);
-        expect(warn).toHaveBeenCalled();
+
+        window.localStorage.setItem(KEY, JSON.stringify({layout: {}, floatingWindows: []}));
+        expect(loadState(KEY, fallback)).toBe(fallback);
+        expect(warn).toHaveBeenCalledTimes(2);
     });
 });

@@ -2,6 +2,7 @@ import React, {createContext, useEffect, useReducer, useRef, useState} from "rea
 import {
     LaymanContextType,
     LaymanLayout,
+    LaymanTab,
     PaneRenderer,
     TabRenderer,
     Position,
@@ -11,7 +12,6 @@ import {
 import {DndProvider} from "react-dnd";
 import {HTML5Backend} from "react-dnd-html5-backend";
 import {DropHighlight} from "./DropHighlight";
-import {TabData} from "./TabData";
 import {LaymanReducer} from "./LaymanReducer";
 import {loadState, saveState} from "./persistence";
 
@@ -19,7 +19,7 @@ import {loadState, saveState} from "./persistence";
 const defaultContextValue: LaymanContextType = {
     globalContainerSize: {top: 0, left: 0, width: 0, height: 0},
     setGlobalContainerSize: () => {},
-    layout: {tabs: []},
+    layout: undefined,
     layoutDispatch: () => {},
     setDropHighlightPosition: () => {},
     globalDragging: false,
@@ -106,7 +106,7 @@ export const LaymanProvider = ({
         width: 0,
         height: 0,
     });
-    const [draggedWindowTabs, setDraggedWindowTabs] = useState<TabData[]>([]);
+    const [draggedWindowTabs, setDraggedWindowTabs] = useState<LaymanTab[]>([]);
     const [windowDragStartPosition, setWindowDragStartPosition] = useState({
         x: 0,
         y: 0,

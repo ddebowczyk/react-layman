@@ -28,9 +28,8 @@ export function addressKey(address: WindowAddress): string {
  * Recursively deep-clones a value.
  *
  * Supports the data shapes used by a layman layout: primitives, plain objects,
- * arrays, `Date`/`RegExp`, and class instances (e.g. `TabData`). Object
- * prototypes are preserved so that `instanceof` checks on cloned values keep
- * working.
+ * arrays, `Date`/`RegExp`, and custom object instances. Object prototypes are
+ * preserved so clones retain the semantics of their input values.
  */
 export function deepClone<T>(value: T): T {
     // Primitives (and functions) are returned as-is.

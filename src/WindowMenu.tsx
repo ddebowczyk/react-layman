@@ -1,15 +1,15 @@
 import {useContext} from "react";
 import {LaymanContext} from "./LaymanContext";
 import {ToolbarButton} from "./ToolbarButton";
-import {TabData} from "./TabData";
 import {AddIcon, CloseIcon, EllipsisIcon} from "./Icons";
-import {Position, WindowAddress} from "./types";
+import {createLaymanTab} from "./createLaymanTab";
+import {LaymanTab, Position, WindowAddress} from "./types";
 
 interface WindowMenuProps {
     path: WindowAddress;
     position: Position;
-    tabs: TabData[];
-    selectedIndex: number;
+    tabs: LaymanTab[];
+    selectedTabId: string | null;
     open: boolean;
     setOpen: (open: boolean) => void;
     // Pre-rendered window control buttons (maximize/float/close/etc.).
@@ -22,7 +22,7 @@ interface WindowMenuProps {
  * popover that exposes tab selection, adding tabs, and the window control
  * buttons that would otherwise live in the toolbar.
  */
-export function WindowMenu({path, position, tabs, selectedIndex, open, setOpen, controlButtons}: WindowMenuProps) {
+export function WindowMenu({path, position, tabs, selectedTabId, open, setOpen, controlButtons}: WindowMenuProps) {
     const {layoutDispatch, renderTab, mutable} = useContext(LaymanContext);
 
     // parseInt returns NaN (not null/undefined) when the CSS variable is missing,
@@ -54,10 +54,10 @@ export function WindowMenu({path, position, tabs, selectedIndex, open, setOpen, 
             {open && (
                 <div className="layman-window-menu-popover">
                     <div className="layman-window-menu-tabs">
-                        {tabs.map((tab, index) => (
+                        {tabs.map((tab) => (
                             <div
                                 key={tab.id}
-                                className={`layman-window-menu-tab ${index === selectedIndex ? "selected" : ""}`}
+                                className={`layman-window-menu-tab ${tab.id === selectedTabId ? "selected" : ""}`}
                             >
                                 <button
                                     className="tab-selector"
@@ -82,7 +82,7 @@ export function WindowMenu({path, position, tabs, selectedIndex, open, setOpen, 
                     <div className="layman-window-menu-controls">
                         <ToolbarButton
                             onClick={() => {
-                                const newTab = new TabData("blank");
+                                const newTab = createLaymanTab("blank", {});
                                 layoutDispatch({type: "addTab", path, tab: newTab});
                                 layoutDispatch({type: "selectTab", path, tab: newTab});
                             }}

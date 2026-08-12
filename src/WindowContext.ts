@@ -1,5 +1,5 @@
 import {createContext, useContext} from "react";
-import {TabData} from "./TabData";
+import {createLaymanTab} from "./createLaymanTab";
 import {WindowProps} from "./types";
 
 export const WindowContext = createContext<WindowProps>({
@@ -10,7 +10,7 @@ export const WindowContext = createContext<WindowProps>({
         height: 0,
     },
     path: [],
-    tab: new TabData(""),
+    tab: createLaymanTab("", {}),
     isSelected: false,
 });
 
