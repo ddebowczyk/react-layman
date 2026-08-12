@@ -5,6 +5,7 @@ import {serializeState} from "../src/layoutSnapshot";
 import type {
     LaymanSnapshotPort,
     LaymanSnapshotSaveRequest,
+    LaymanSnapshotSaveResult,
     LaymanWorkspaceUpdate,
 } from "../src/integration";
 import type {LaymanState} from "../src/core";
@@ -146,6 +147,36 @@ describe("Layman workspace bridge", () => {
         expect(controller.inspect().windows[0]?.tabs[0]?.data).toEqual({moduleId: "remote"});
         expect(events).toContain("save-conflicted");
         expect(events).not.toContain("save-failed");
+    });
+
+    it("retains a newer subscription record while an older compare-and-save response is pending", async () => {
+        const port = snapshotPort();
+        let resolveSave: ((result: LaymanSnapshotSaveResult) => void) | undefined;
+        port.compareAndSave = vi.fn(
+            () => new Promise<LaymanSnapshotSaveResult>((resolve) => {
+                resolveSave = resolve;
+            })
+        );
+        const controller = createLaymanController({state: workspace()});
+        const bridge = createLaymanWorkspaceBridge({workspaceId: "main", originId: "view-a", controller, snapshots: port});
+        await bridge.start();
+
+        bridge.dispatch({
+            type: "tab.insert",
+            tab: {id: "tab-terminal", title: "Terminal", data: {moduleId: "terminal"}},
+            target: {kind: "window", windowId: "window-main"},
+            placement: "center",
+        });
+        await Promise.resolve();
+        expect(port.compareAndSave).toHaveBeenCalledOnce();
+
+        port.publish(update(workspace("remote"), 2, "view-b"));
+        if (!resolveSave) throw new Error("compareAndSave did not start");
+        resolveSave({status: "saved", update: update(workspace("local"), 1, "view-a")});
+        await bridge.flush();
+
+        expect(bridge.inspect().revision).toBe(2);
+        expect(controller.inspect().windows[0]?.tabs[0]?.data).toEqual({moduleId: "remote"});
     });
 
     it("ignores echoed and stale updates, then applies a newer external update without saving it again", async () => {

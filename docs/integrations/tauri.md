@@ -60,6 +60,11 @@ with that record, cancels queued writes from the rejected layout, and emits
 `save-conflicted`. It does not retry or merge snapshots. The application owns
 any explicit conflict-resolution policy.
 
+A `conflict` must always contain a valid current record. Do not delete an
+active workspace record between CAS operations. Model a cleared layout as a
+new valid snapshot with the next revision. If a host cannot provide a current
+record after deletion, fail the port operation instead of returning `conflict`.
+
 Use a new, stable `originId` for each mounted view, for example
 `useRef(crypto.randomUUID()).current`. The same ID identifies an echoed save
 event and lets the bridge ignore it.
