@@ -1,4 +1,4 @@
-import {useContext, useEffect, useMemo, useState} from "react";
+import {useContext, useEffect, useState} from "react";
 import {useDrag, useDragLayer} from "react-dnd";
 import {windowDragType} from "./dnd/items";
 import {LaymanContext} from "./LaymanContext";
@@ -18,12 +18,6 @@ export function useWindowDrag({windowId, path, position, tabs, selectedTabId}: U
     const {canExecute, layoutDispatch, setGlobalDragging, setWindowDragStartPosition, setDraggedWindowTabs} = useContext(LaymanContext);
     const [currentMousePosition, setCurrentMousePosition] = useState({top: 0, left: 0});
     const [dragStartPosition, setDragStartPosition] = useState({x: 0, y: 0});
-    const emptyImage = useMemo(() => {
-        const image = new Image();
-        image.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
-        return image;
-    }, []);
-
     const finishDrag = (monitor: {didDrop: () => boolean}) => {
         if (isFloatingAddress(path) && !monitor.didDrop()) {
             layoutDispatch({
@@ -57,9 +51,15 @@ export function useWindowDrag({windowId, path, position, tabs, selectedTabId}: U
     const [{isDragging: isSingleTabDragging}, singleTabDrag, singleTabDragPreview] = useDrag(dragSpec);
 
     useEffect(() => {
-        dragPreview(emptyImage);
-        singleTabDragPreview(emptyImage);
-    }, [dragPreview, emptyImage, singleTabDragPreview]);
+        // `Image` does not exist while React renders on the server. Drag
+        // previews only apply in the browser, after this view has mounted.
+        if (typeof Image === "undefined") return;
+
+        const image = new Image();
+        image.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+        dragPreview(image);
+        singleTabDragPreview(image);
+    }, [dragPreview, singleTabDragPreview]);
 
     const {clientOffset} = useDragLayer((monitor) => ({clientOffset: monitor.getClientOffset()}));
     useEffect(() => {
