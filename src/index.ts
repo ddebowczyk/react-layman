@@ -3,6 +3,7 @@ import "../styles/global.css";
 export type {
     Children,
     LaymanDirection,
+    LaymanPlacement,
     LaymanPath,
     LaymanTab,
     WindowAddress,
@@ -15,8 +16,6 @@ export type {
     PaneRenderer,
     TabRenderer,
     LaymanContextType,
-    LaymanHeuristic,
-    LaymanLayoutAction,
     Position,
     DragData,
     ToolBarProps,
@@ -33,7 +32,22 @@ export type {
     JsonValue,
 } from "./types";
 
-export {createLaymanTab, createLaymanWindow} from "./createLaymanTab";
+export {createLaymanNode, createLaymanTab, createLaymanWindow} from "./createLaymanTab";
+export type {
+    LaymanChange,
+    LaymanCommand,
+    LaymanInspection,
+    LaymanInspectedSplit,
+    LaymanInspectedTab,
+    LaymanInspectedWindow,
+    LaymanRejectionReason,
+    LaymanTransition,
+    LaymanValidation,
+    LaymanValidationIssue,
+    WindowMoveTarget,
+    WindowTarget,
+} from "./core";
+export {applyLaymanCommand, inspectLaymanState, validateLaymanState} from "./core";
 
 export const TabType = "TAB";
 export const WindowType = "WINDOW";

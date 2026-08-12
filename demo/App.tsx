@@ -1,4 +1,4 @@
-import {LaymanLayout, LaymanProvider, Layman, TabData} from "../src";
+import {LaymanProvider, Layman, LaymanTab} from "../src";
 import Pane from "./Pane";
 import TabSource from "./extra/TabSource";
 import NullLayout from "./extra/NullLayout";
@@ -7,6 +7,7 @@ import Toggle from "./extra/Toggle";
 import Button from "./extra/Button";
 import NumberStepper from "./extra/NumberStepper";
 import FloatingPanel from "./extra/FloatingPanel";
+import {initialLayout} from "./initialLayout";
 import {ReactNode, useState} from "react";
 
 /** Labeled row used to group related controls inside the floating panel. */
@@ -20,43 +21,15 @@ function PanelSection({label, children}: {label: string; children: ReactNode}) {
 }
 
 export default function App() {
-    const initialLayout: LaymanLayout = {
-        direction: "row",
-        children: [
-            {
-                direction: "column",
-                children: [
-                    {
-                        tabs: [
-                            new TabData("Home", {icon: "home-icon"}),
-                            new TabData("Settings", {icon: "settings-icon"}),
-                        ],
-                        selectedIndex: 0,
-                    },
-                    {
-                        tabs: [
-                            new TabData("Profile", {icon: "profile-icon"}),
-                            new TabData("Messages", {icon: "messages-icon"}),
-                        ],
-                        selectedIndex: 1,
-                    },
-                ],
-            },
-            {
-                tabs: [new TabData("Dashboard", {icon: "dashboard-icon"})],
-                selectedIndex: 0,
-            },
-        ],
-    };
     /**
      * Renders the pane content shown inside a window for the given tab.
      */
-    const renderPane = (tab: TabData): JSX.Element => <Pane paneId={tab.id} />;
+    const renderPane = (tab: LaymanTab): JSX.Element => <Pane paneId={tab.id} />;
 
     /**
      * Renders the label shown on a tab, for display purposes.
      */
-    const renderTab = (tab: TabData) => tab.name;
+    const renderTab = (tab: LaymanTab) => tab.title;
 
     // State to edit mutability of layout
     const [mutable, setMutable] = useState(true);
@@ -97,14 +70,14 @@ export default function App() {
                 <FloatingPanel title="Layman Controls">
                     {/* Tab sources */}
                     <PanelSection label="Add to Top Left">
-                        <TabSource tabName={"A"} heuristic="topleft" />
-                        <TabSource tabName={"B"} heuristic="topleft" />
-                        <TabSource tabName={"C"} heuristic="topleft" />
+                        <TabSource tabName={"A"} targetWindowId="window-home" />
+                        <TabSource tabName={"B"} targetWindowId="window-home" />
+                        <TabSource tabName={"C"} targetWindowId="window-home" />
                     </PanelSection>
                     <PanelSection label="Add to Top Right">
-                        <TabSource tabName={"D"} heuristic="topright" />
-                        <TabSource tabName={"E"} heuristic="topright" />
-                        <TabSource tabName={"F"} heuristic="topright" />
+                        <TabSource tabName={"D"} targetWindowId="window-dashboard" />
+                        <TabSource tabName={"E"} targetWindowId="window-dashboard" />
+                        <TabSource tabName={"F"} targetWindowId="window-dashboard" />
                     </PanelSection>
 
                     {/* Toggles */}

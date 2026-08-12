@@ -1,5 +1,5 @@
 import {useContext} from "react";
-import {LaymanContext, TabData} from "../../src";
+import {createLaymanTab, LaymanContext} from "../../src";
 
 export default function NullLayout() {
     const {layoutDispatch} = useContext(LaymanContext);
@@ -28,9 +28,10 @@ export default function NullLayout() {
                 }}
                 onClick={() => {
                     layoutDispatch({
-                        type: "addTab",
-                        path: [],
-                        tab: new TabData("blank"),
+                        type: "tab.insert",
+                        tab: createLaymanTab("blank", {}),
+                        target: {kind: "root"},
+                        placement: "center",
                     });
                 }}
             >

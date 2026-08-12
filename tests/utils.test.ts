@@ -31,6 +31,7 @@ describe("deepClone", () => {
 
     it("deep-clones plain tab data in a layout tree", () => {
         const layout: LaymanNode = {
+            id: "split-root",
             direction: "row",
             children: [
                 {...window("window-a", tab("A", {path: "/a"}, "tab-a"), tab("B", {}, "tab-b")), viewPercent: 50},

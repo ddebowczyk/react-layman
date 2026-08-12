@@ -6,7 +6,7 @@ import {WindowContext} from "./WindowContext";
 import {Position, WindowProps} from "./types";
 import {deepEqual, isFloatingAddress} from "./utils";
 
-export function Window({position: rawPosition, path, tab, isSelected, zIndex: floatingZIndex}: WindowProps) {
+export function Window({windowId, position: rawPosition, path, tab, isSelected, zIndex: floatingZIndex}: WindowProps) {
     const {
         globalContainerSize,
         renderPane,
@@ -42,7 +42,7 @@ export function Window({position: rawPosition, path, tab, isSelected, zIndex: fl
 
     // Bring this floating window to the front when its content is interacted with.
     const bringToFront = () => {
-        if (isFloating) layoutDispatch({type: "bringFloatingWindowToFront", floatingId: path.floatingId});
+        if (isFloating) layoutDispatch({type: "floating.focus", windowId});
     };
 
     // Custom drag layer to track mouse position during dragging
@@ -146,6 +146,7 @@ export function Window({position: rawPosition, path, tab, isSelected, zIndex: fl
                 )}
             <WindowContext.Provider
                 value={{
+                    windowId,
                     position,
                     path,
                     tab,

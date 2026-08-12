@@ -1,16 +1,15 @@
 import {describe, expect, it} from "vitest";
 import {computeWindowRects, findWindowAtPoint, findWindowRectAtPoint} from "../src/layoutGeometry";
 import type {LaymanNode} from "../src/types";
-import {tab, window} from "./helpers";
+import {node, tab, window} from "./helpers";
 
 function makeRowOfTwo(): LaymanNode {
-    return {
-        direction: "row",
-        children: [
+    return node(
+        "split-root",
+        "row",
             {...window("window-left", tab("Left", {}, "tab-left")), viewPercent: 40},
-            {...window("window-right", tab("Right", {}, "tab-right")), viewPercent: 60},
-        ],
-    };
+            {...window("window-right", tab("Right", {}, "tab-right")), viewPercent: 60}
+    );
 }
 
 const container = {width: 1000, height: 500};
@@ -18,8 +17,8 @@ const container = {width: 1000, height: 500};
 describe("computeWindowRects", () => {
     it("computes pixel rects for every leaf, proportional to viewPercent", () => {
         expect(computeWindowRects(makeRowOfTwo(), container)).toEqual([
-            {path: [0], position: {top: 0, left: 0, width: 400, height: 500}},
-            {path: [1], position: {top: 0, left: 400, width: 600, height: 500}},
+            {windowId: "window-left", path: [0], position: {top: 0, left: 0, width: 400, height: 500}},
+            {windowId: "window-right", path: [1], position: {top: 0, left: 400, width: 600, height: 500}},
         ]);
     });
 

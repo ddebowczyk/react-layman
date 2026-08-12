@@ -1,238 +1,216 @@
 import {describe, expect, it} from "vitest";
-import {LaymanReducer} from "../src/LaymanReducer";
-import type {FloatingWindowData, LaymanLayout, LaymanLayoutAction, LaymanNode, LaymanState, LaymanTab, LaymanWindow} from "../src/types";
-import {floatingWindow, tab, window} from "./helpers";
+import {applyLaymanCommand, validateLaymanState} from "../src/core";
+import type {LaymanNode, LaymanState, LaymanWindow} from "../src/types";
+import {floatingWindow, node, tab, window} from "./helpers";
 
-function makeWindow(...tabs: LaymanTab[]): LaymanWindow {
-    return window("window-root", ...tabs);
-}
-
-function makeRowOfTwo(left = tab("Left", {}, "tab-left"), right = tab("Right", {}, "tab-right")): LaymanNode {
+function twoWindowState(): LaymanState {
     return {
-        direction: "row",
-        children: [
-            {...window("window-left", left), viewPercent: 50},
-            {...window("window-right", right), viewPercent: 50},
-        ],
+        layout: node(
+            "split-main",
+            "row",
+            {...window("window-left", tab("Left", {}, "tab-left"), tab("Editor", {}, "tab-editor")), viewPercent: 40},
+            {...window("window-right", tab("Right", {}, "tab-right")), viewPercent: 60}
+        ),
+        floatingWindows: [],
     };
 }
 
-function run(state: LaymanState, action: LaymanLayoutAction): LaymanState {
-    return LaymanReducer(state, action);
-}
+describe("semantic layout commands", () => {
+    it("creates the first tiled window from an explicit root target", () => {
+        const state: LaymanState = {layout: undefined, floatingWindows: []};
+        const editor = tab("Editor", {path: "/editor"}, "tab-editor");
 
-function runLayout(layout: LaymanLayout, action: LaymanLayoutAction): LaymanLayout {
-    return run({layout, floatingWindows: []}, action).layout;
-}
-
-describe("addTab", () => {
-    it("adds to root, nested, and floating windows", () => {
-        const root = makeWindow(tab("Existing", {}, "tab-existing"));
-        const added = tab("Added", {}, "tab-added");
-        expect((runLayout(root, {type: "addTab", path: [], tab: added}) as LaymanWindow).tabs).toEqual([...root.tabs, added]);
-
-        const layout = makeRowOfTwo();
-        expect(((runLayout(layout, {type: "addTab", path: [1], tab: added}) as LaymanNode).children[1] as LaymanWindow).tabs).toContain(added);
-
-        const floating = floatingWindow("float-1", tab("Float", {}, "tab-float"));
-        const result = run({layout: undefined, floatingWindows: [floating]}, {type: "addTab", path: {floatingId: "float-1"}, tab: added});
-        expect(result.floatingWindows[0].tabs).toEqual([...floating.tabs, added]);
-    });
-
-    it("creates a new root window when the layout is empty", () => {
-        const added = tab("Added", {}, "tab-added");
-        const result = runLayout(undefined, {type: "addTab", path: [], tab: added}) as LaymanWindow;
-        expect(result).toMatchObject({tabs: [added], selectedTabId: added.id});
-        expect(result.id).toEqual(expect.any(String));
-    });
-});
-
-describe("removeTab and selectTab", () => {
-    it("keeps selection by tab ID and chooses the adjacent tab when removing the selection", () => {
-        const a = tab("A", {}, "tab-a");
-        const b = tab("B", {}, "tab-b");
-        const c = tab("C", {}, "tab-c");
-        const layout: LaymanWindow = {...window("window-root", a, b, c), selectedTabId: b.id};
-        const result = runLayout(layout, {type: "removeTab", path: [], tab: b}) as LaymanWindow;
-        expect(result.tabs).toEqual([a, c]);
-        expect(result.selectedTabId).toBe(c.id);
-    });
-
-    it("does not change selection when removing a different tab", () => {
-        const a = tab("A", {}, "tab-a");
-        const b = tab("B", {}, "tab-b");
-        const c = tab("C", {}, "tab-c");
-        const layout: LaymanWindow = {...window("window-root", a, b, c), selectedTabId: c.id};
-        const result = runLayout(layout, {type: "removeTab", path: [], tab: a}) as LaymanWindow;
-        expect(result.selectedTabId).toBe(c.id);
-    });
-
-    it("removes emptied windows and selects only tabs that belong to their window", () => {
-        const left = tab("Left", {}, "tab-left");
-        const right = tab("Right", {}, "tab-right");
-        expect(runLayout(makeRowOfTwo(left, right), {type: "removeTab", path: [0], tab: left})).toMatchObject({tabs: [right]});
-        expect(runLayout(makeWindow(left), {type: "removeTab", path: [], tab: left})).toBeUndefined();
-
-        const layout = makeWindow(left);
-        expect(runLayout(layout, {type: "selectTab", path: [], tab: right})).toBe(layout);
-    });
-
-    it("closes an emptied floating window", () => {
-        const only = tab("Only", {}, "tab-only");
-        const result = run({layout: undefined, floatingWindows: [floatingWindow("float-1", only)]}, {
-            type: "removeTab",
-            path: {floatingId: "float-1"},
-            tab: only,
+        const transition = applyLaymanCommand(state, {
+            type: "tab.insert",
+            tab: editor,
+            target: {kind: "root"},
+            placement: "center",
+            windowId: "window-main",
         });
-        expect(result.floatingWindows).toEqual([]);
-    });
-});
 
-describe("moveTab", () => {
-    it("moves tabs between windows without recreating them", () => {
-        const leftA = tab("Left A", {}, "tab-left-a");
-        const leftB = tab("Left B", {}, "tab-left-b");
-        const right = tab("Right", {}, "tab-right");
-        const layout: LaymanNode = {
-            direction: "row",
-            children: [
-                {...window("window-left", leftA, leftB), viewPercent: 50},
-                {...window("window-right", right), viewPercent: 50},
+        expect(transition.status).toBe("applied");
+        expect(transition.changes).toContainEqual({kind: "window", id: "window-main"});
+        expect(transition.next.layout).toEqual(window("window-main", editor));
+        expect(state.layout).toBeUndefined();
+    });
+
+    it("moves a tab by stable IDs and retains the same tab value", () => {
+        const state = twoWindowState();
+        const tabToMove = (state.layout as LaymanNode).children[0] as LaymanWindow;
+        const editor = tabToMove.tabs[1];
+
+        const transition = applyLaymanCommand(state, {
+            type: "tab.move",
+            tabId: editor.id,
+            target: {kind: "window", windowId: "window-right"},
+            placement: "center",
+        });
+
+        const layout = transition.next.layout as LaymanNode;
+        expect(transition.status).toBe("applied");
+        expect((layout.children[0] as LaymanWindow).tabs.map((candidate) => candidate.id)).toEqual(["tab-left"]);
+        expect((layout.children[1] as LaymanWindow).tabs[1]).toBe(editor);
+        expect((state.layout as LaymanNode).children[0]).toBe(tabToMove);
+    });
+
+    it("adds an edge split with stable window and split IDs", () => {
+        const first = tab("First", {}, "tab-first");
+        const second = tab("Second", {}, "tab-second");
+        const state: LaymanState = {layout: window("window-main", first, second), floatingWindows: []};
+
+        const transition = applyLaymanCommand(state, {
+            type: "tab.move",
+            tabId: second.id,
+            target: {kind: "window", windowId: "window-main"},
+            placement: "right",
+            windowId: "window-preview",
+        });
+
+        const layout = transition.next.layout as LaymanNode;
+        expect(transition.status).toBe("applied");
+        expect(layout).toMatchObject({id: "split-window-preview-window-main", direction: "row"});
+        expect(layout.children.map((child) => child.id)).toEqual(["window-main", "window-preview"]);
+        expect((layout.children[1] as LaymanWindow).tabs).toEqual([second]);
+    });
+
+    it("rejects an invalid target atomically", () => {
+        const state = twoWindowState();
+        const transition = applyLaymanCommand(state, {
+            type: "tab.move",
+            tabId: "tab-editor",
+            target: {kind: "window", windowId: "window-missing"},
+            placement: "center",
+        });
+
+        expect(transition).toMatchObject({status: "rejected", reason: "invalid-target"});
+        expect(transition.previous).toBe(state);
+        expect(transition.next).toBe(state);
+    });
+
+    it("rejects malformed inserted tabs without changing state", () => {
+        const state: LaymanState = {layout: undefined, floatingWindows: []};
+        const transition = applyLaymanCommand(state, {
+            type: "tab.insert",
+            tab: {id: "tab-invalid", title: "Invalid", data: new Date() as never},
+            target: {kind: "root"},
+            placement: "center",
+        });
+
+        expect(transition).toMatchObject({status: "rejected", reason: "invalid-tab"});
+        expect(transition.next).toBe(state);
+    });
+
+    it("rejects an explicit window ID already held by a split", () => {
+        const state = twoWindowState();
+        const transition = applyLaymanCommand(state, {
+            type: "tab.insert",
+            tab: tab("Preview", {}, "tab-preview"),
+            target: {kind: "root"},
+            placement: "right",
+            windowId: "split-main",
+        });
+
+        expect(transition).toMatchObject({status: "rejected", reason: "duplicate-id"});
+        expect(transition.next).toBe(state);
+    });
+
+    it("selects and removes tabs without leaving an invalid selection", () => {
+        const state = twoWindowState();
+        const selected = applyLaymanCommand(state, {type: "tab.select", tabId: "tab-editor"});
+        const removed = applyLaymanCommand(selected.next, {type: "tab.remove", tabId: "tab-editor"});
+
+        expect(((selected.next.layout as LaymanNode).children[0] as LaymanWindow).selectedTabId).toBe("tab-editor");
+        expect(((removed.next.layout as LaymanNode).children[0] as LaymanWindow)).toMatchObject({
+            tabs: [{id: "tab-left"}],
+            selectedTabId: "tab-left",
+        });
+    });
+
+    it("floats and docks a window without reconstructing its tabs", () => {
+        const state = twoWindowState();
+        const leftWindow = (state.layout as LaymanNode).children[0] as LaymanWindow;
+        const floated = applyLaymanCommand(state, {
+            type: "window.move",
+            windowId: "window-left",
+            target: {kind: "floating", position: {top: 10, left: 20, width: 300, height: 200}},
+            placement: "center",
+        });
+
+        expect(floated.status).toBe("applied");
+        expect(floated.next.floatingWindows[0].tabs).toBe(leftWindow.tabs);
+        expect((floated.next.layout as LaymanWindow).id).toBe("window-right");
+
+        const docked = applyLaymanCommand(floated.next, {
+            type: "window.move",
+            windowId: "window-left",
+            target: {kind: "window", windowId: "window-right"},
+            placement: "center",
+        });
+
+        expect(docked.status).toBe("applied");
+        expect(docked.next.floatingWindows).toEqual([]);
+        expect((docked.next.layout as LaymanWindow).tabs).toEqual([...((state.layout as LaymanNode).children[1] as LaymanWindow).tabs, ...leftWindow.tabs]);
+    });
+
+    it("rejects invalid floating geometry atomically", () => {
+        const state: LaymanState = {layout: undefined, floatingWindows: [floatingWindow("window-float", tab("Float", {}, "tab-float"))]};
+        const transition = applyLaymanCommand(state, {
+            type: "floating.position",
+            windowId: "window-float",
+            position: {top: Infinity, left: 0, width: 200, height: 100},
+        });
+
+        expect(transition).toMatchObject({status: "rejected", reason: "invalid-position"});
+        expect(transition.next).toBe(state);
+    });
+
+    it("focuses and closes floating windows through explicit commands", () => {
+        const state: LaymanState = {
+            layout: undefined,
+            floatingWindows: [
+                {...floatingWindow("window-back", tab("Back", {}, "tab-back")), zIndex: 30},
+                {...floatingWindow("window-front", tab("Front", {}, "tab-front")), zIndex: 31},
             ],
         };
-        const result = runLayout(layout, {type: "moveTab", path: [0], newPath: [1], tab: leftB, placement: "center"}) as LaymanNode;
-        expect((result.children[0] as LaymanWindow).tabs).toEqual([leftA]);
-        expect((result.children[1] as LaymanWindow).tabs).toEqual([right, leftB]);
-        expect((result.children[1] as LaymanWindow).tabs[1]).toBe(leftB);
+        const focused = applyLaymanCommand(state, {type: "floating.focus", windowId: "window-back"});
+        const closed = applyLaymanCommand(focused.next, {type: "window.close", windowId: "window-front"});
+
+        expect(focused.next.floatingWindows.find((candidate) => candidate.id === "window-back")?.zIndex).toBe(32);
+        expect(closed.next.floatingWindows.map((candidate) => candidate.id)).toEqual(["window-back"]);
     });
 
-    it("creates a split window for an edge destination", () => {
-        const a = tab("A", {}, "tab-a");
-        const b = tab("B", {}, "tab-b");
-        const result = runLayout(makeWindow(a, b), {type: "moveTab", path: [], newPath: [], tab: b, placement: "right"}) as LaymanNode;
-        expect(result.direction).toBe("row");
-        expect((result.children[0] as LaymanWindow).tabs).toEqual([a]);
-        expect((result.children[1] as LaymanWindow).tabs).toEqual([b]);
+    it("resizes a stable split and reports invalid dimensions", () => {
+        const state = twoWindowState();
+        const resized = applyLaymanCommand(state, {type: "split.resize", splitId: "split-main", index: 0, leadingPercent: 30});
+        const layout = resized.next.layout as LaymanNode;
+
+        expect(resized.status).toBe("applied");
+        expect(layout.children.map((child) => child.viewPercent)).toEqual([30, 70]);
+
+        const invalid = applyLaymanCommand(resized.next, {type: "split.resize", splitId: "split-main", index: 0, leadingPercent: 100});
+        expect(invalid).toMatchObject({status: "rejected", reason: "invalid-size"});
+        expect(invalid.next).toBe(resized.next);
     });
 
-    it("keeps external tabs external and supports existing floating destinations", () => {
-        const existing = tab("Existing", {}, "tab-existing");
-        const external = tab("External", {}, "tab-external");
-        const layout = makeWindow(existing);
-        expect((runLayout(layout, {type: "moveTab", path: [-1], newPath: [], tab: external, placement: "center"}) as LaymanWindow).tabs).toEqual([
-            existing,
-            external,
-        ]);
+    it("normalizes split proportions only once", () => {
+        const state = twoWindowState();
+        const arranged = applyLaymanCommand(state, {type: "layout.autoArrange"});
+        const repeat = applyLaymanCommand(arranged.next, {type: "layout.autoArrange"});
 
-        const floating = floatingWindow("float-1", tab("Float", {}, "tab-float"));
-        const result = run({layout, floatingWindows: [floating]}, {
-            type: "moveTab",
-            path: [],
-            newPath: {floatingId: "float-1"},
-            tab: existing,
-            placement: "center",
-        });
-        expect(result.floatingWindows[0].tabs).toEqual([floating.tabs[0], existing]);
+        expect((arranged.next.layout as LaymanNode).children.map((child) => child.viewPercent)).toEqual([50, 50]);
+        expect(repeat.status).toBe("noop");
+        expect(repeat.next).toBe(arranged.next);
     });
 
-    it("rejects invalid destinations before it removes the source tab", () => {
-        const left = tab("Left", {}, "tab-left");
-        const state: LaymanState = {layout: makeRowOfTwo(left), floatingWindows: []};
-        expect(run(state, {type: "moveTab", path: [0], newPath: [9], tab: left, placement: "center"})).toBe(state);
-        expect(
-            run(state, {type: "moveTab", path: [0], newPath: {floatingId: "missing"}, tab: left, placement: "center"})
-        ).toBe(state);
-    });
+    it("rejects an invalid layout before it runs a command", () => {
+        const duplicated: LaymanState = {
+            layout: node("window-shared", "row", window("window-shared", tab("Left", {}, "tab-left")), window("window-right", tab("Right", {}, "tab-right"))),
+            floatingWindows: [],
+        };
+        expect(validateLaymanState(duplicated)).toMatchObject({valid: false, issues: ["duplicate-layout-id"]});
 
-    it("does not mutate a tab when it is dropped back into the same window", () => {
-        const selected = tab("Selected", {}, "tab-selected");
-        const state: LaymanState = {layout: {...makeWindow(selected), selectedTabId: selected.id}, floatingWindows: []};
-        expect(run(state, {type: "moveTab", path: [], newPath: [], tab: selected, placement: "center"})).toBe(state);
-    });
-});
-
-describe("window placement and movement", () => {
-    it("adds windows at root edges and keeps IDs", () => {
-        const root = makeWindow(tab("Root", {}, "tab-root"));
-        const added = window("window-added", tab("Added", {}, "tab-added"));
-        const result = runLayout(root, {type: "addWindow", path: [], window: added, placement: "left"}) as LaymanNode;
-        expect(result.direction).toBe("row");
-        expect((result.children[0] as LaymanWindow).id).toBe("window-added");
-        expect((result.children[1] as LaymanWindow).id).toBe("window-root");
-    });
-
-    it("extends a matching root split and rescales its children", () => {
-        const layout = makeRowOfTwo();
-        const added = window("window-added", tab("Added", {}, "tab-added"));
-        const result = runLayout(layout, {type: "addWindow", path: [], window: added, placement: "right"}) as LaymanNode;
-        expect(result.children).toHaveLength(3);
-        expect((result.children[2] as LaymanWindow).id).toBe("window-added");
-        expect(result.children.reduce((sum, child) => sum + (child?.viewPercent ?? 0), 0)).toBeCloseTo(100);
-    });
-
-    it("floats, docks, and merges source windows from their actual state", () => {
-        const left = tab("Left", {}, "tab-left");
-        const right = tab("Right", {}, "tab-right");
-        const state: LaymanState = {layout: makeRowOfTwo(left, right), floatingWindows: []};
-        const floated = run(state, {
-            type: "moveWindow",
-            path: [0],
-            newPath: {floatingId: "float-left"},
-            placement: "center",
-            position: {top: 5, left: 5, width: 250, height: 150},
-        });
-        expect(floated.floatingWindows[0]).toMatchObject({id: "window-left", tabs: [left]});
-        expect((floated.layout as LaymanWindow).tabs).toEqual([right]);
-
-        const docked = run(floated, {type: "moveWindow", path: {floatingId: "window-left"}, newPath: [], placement: "center"});
-        expect(docked.floatingWindows).toEqual([]);
-        expect((docked.layout as LaymanWindow).tabs).toEqual([right, left]);
-
-        const one = floatingWindow("float-one", tab("One", {}, "tab-one"));
-        const two = floatingWindow("float-two", tab("Two", {}, "tab-two"));
-        const merged = run({layout: undefined, floatingWindows: [one, two]}, {
-            type: "moveWindow",
-            path: {floatingId: "float-one"},
-            newPath: {floatingId: "float-two"},
-            placement: "center",
-        });
-        expect(merged.floatingWindows).toHaveLength(1);
-        expect(merged.floatingWindows[0].tabs).toEqual([two.tabs[0], one.tabs[0]]);
-    });
-
-    it("does not remove a window when a requested float lacks its position", () => {
-        const layout = makeWindow(tab("Only", {}, "tab-only"));
-        const state: LaymanState = {layout, floatingWindows: []};
-        expect(run(state, {type: "moveWindow", path: [], newPath: {floatingId: "float"}, placement: "center"})).toBe(state);
-    });
-
-    it("rejects invalid and self destinations before it removes a window", () => {
-        const layout = makeRowOfTwo();
-        const state: LaymanState = {layout, floatingWindows: []};
-        expect(run(state, {type: "moveWindow", path: [0], newPath: [9], placement: "left"})).toBe(state);
-        expect(run(state, {type: "moveWindow", path: [0], newPath: [0], placement: "left"})).toBe(state);
-    });
-});
-
-describe("geometry commands", () => {
-    it("changes only the targeted floating window position and z-index", () => {
-        const first: FloatingWindowData = {...floatingWindow("first", tab("A", {}, "tab-a")), zIndex: 30};
-        const second: FloatingWindowData = {...floatingWindow("second", tab("B", {}, "tab-b")), zIndex: 31};
-        const state: LaymanState = {layout: undefined, floatingWindows: [first, second]};
-        const positioned = run(state, {
-            type: "setFloatingWindowPosition",
-            floatingId: "first",
-            position: {top: 100, left: 100, width: 400, height: 300},
-        });
-        expect(positioned.floatingWindows[0].position).toEqual({top: 100, left: 100, width: 400, height: 300});
-        expect(run(positioned, {type: "bringFloatingWindowToFront", floatingId: "first"}).floatingWindows[0].zIndex).toBe(32);
-    });
-
-    it("moves separators and auto-arranges split proportions", () => {
-        const layout = makeRowOfTwo();
-        const moved = runLayout(layout, {type: "moveSeparator", path: [], index: 0, newSplitPercentage: 30}) as LaymanNode;
-        expect(moved.children.map((child) => child?.viewPercent)).toEqual([30, 70]);
-        const arranged = runLayout(moved, {type: "autoArrange"}) as LaymanNode;
-        expect(arranged.children.map((child) => child?.viewPercent)).toEqual([50, 50]);
+        const transition = applyLaymanCommand(duplicated, {type: "layout.autoArrange"});
+        expect(transition).toMatchObject({status: "rejected", reason: "invalid-state"});
+        expect(transition.next).toBe(duplicated);
     });
 });

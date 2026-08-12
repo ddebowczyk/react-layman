@@ -3,7 +3,7 @@ import {useDragLayer, useDrop} from "react-dnd";
 import {WindowType} from ".";
 import {LaymanContext} from "./LaymanContext";
 import {findWindowRectAtPoint} from "./layoutGeometry";
-import {DragData, LaymanPath, Position} from "./types";
+import {DragData, Position} from "./types";
 import {isFloatingAddress} from "./utils";
 import {BottomSplitIcon, LeftSplitIcon, RightSplitIcon, TopSplitIcon, UnfloatIcon} from "./Icons";
 
@@ -52,7 +52,7 @@ function edgeZoneRect(edge: Edge, container: {width: number; height: number}): P
 
 /** One of the 4 fixed edge zones: docks the dragged floating window at the
  *  root of the layout, on that edge (splitting the root only if it isn't
- *  already a matching-direction split - see `treeAddWindow`). */
+ *  already a matching-direction split). */
 function FloatingEdgeZone({edge, container}: {edge: Edge; container: {width: number; height: number}}) {
     const {layoutDispatch} = useContext(LaymanContext);
     const [{isOver}, drop] = useDrop<DragData, void, {isOver: boolean}>(() => ({
@@ -61,9 +61,9 @@ function FloatingEdgeZone({edge, container}: {edge: Edge; container: {width: num
         drop: (item) => {
             if (!("tabs" in item)) return;
             layoutDispatch({
-                type: "moveWindow",
-                path: item.path,
-                newPath: [],
+                type: "window.move",
+                windowId: item.id,
+                target: {kind: "root"},
                 placement: edge,
             });
         },
@@ -84,7 +84,7 @@ function FloatingEdgeZone({edge, container}: {edge: Edge; container: {width: num
 /** The 5th, dynamic zone: appears centered over whichever tiled window the
  *  cursor is currently over, and merges the dragged floating window's tabs
  *  into it. */
-function FloatingCenterZone({path, position}: {path: LaymanPath; position: Position}) {
+function FloatingCenterZone({windowId, position}: {windowId: string; position: Position}) {
     const {layoutDispatch} = useContext(LaymanContext);
     const [{isOver}, drop] = useDrop<DragData, void, {isOver: boolean}>(
         () => ({
@@ -93,15 +93,15 @@ function FloatingCenterZone({path, position}: {path: LaymanPath; position: Posit
             drop: (item) => {
                 if (!("tabs" in item)) return;
                 layoutDispatch({
-                    type: "moveWindow",
-                    path: item.path,
-                    newPath: path,
+                    type: "window.move",
+                    windowId: item.id,
+                    target: {kind: "window", windowId},
                     placement: "center",
                 });
             },
             collect: (monitor) => ({isOver: monitor.isOver()}),
         }),
-        [path]
+        [windowId]
     );
     const size = {
         width: Math.min(CENTER_ZONE_MAX, position.width),
@@ -161,7 +161,7 @@ export function FloatingDockZones() {
                     <FloatingEdgeZone edge="right" container={globalContainerSize} />
                 </>
             )}
-            {hovered && <FloatingCenterZone path={hovered.path} position={hovered.position} />}
+            {hovered && <FloatingCenterZone windowId={hovered.windowId} position={hovered.position} />}
         </>
     );
 }

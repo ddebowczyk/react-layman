@@ -8,10 +8,11 @@ import {
     LaymanSerializedTab,
     LaymanState,
     LaymanTab,
+    LaymanTree,
     Position,
 } from "./types";
 
-export const LAYMAN_SNAPSHOT_VERSION = 1 as const;
+export const LAYMAN_SNAPSHOT_VERSION = 2 as const;
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -79,9 +80,10 @@ function serializeLayoutWithIds(layout: LaymanLayout): LaymanSerializedLayout {
     }
     return {
         kind: "node",
+        id: layout.id,
         direction: layout.direction,
         viewPercent: layout.viewPercent,
-        children: layout.children.map(serializeLayoutWithIds),
+        children: layout.children.map((child) => serializeLayoutWithIds(child)!),
     };
 }
 
@@ -98,7 +100,7 @@ function serializeFloatingWindowData(window: FloatingWindowData): LaymanSerializ
 /** Serializes one layout tree in the current snapshot shape. */
 export function serializeLayout(layout: LaymanLayout): LaymanSerializedLayout {
     const snapshot = serializeLayoutWithIds(layout);
-    validateLayout(snapshot, new Set<string>(), new Set<string>());
+    validateLayout(snapshot, new Set<string>(), new Set<string>(), new Set<string>(), true);
     return snapshot;
 }
 
@@ -145,12 +147,21 @@ function validateSelection(tabs: unknown[], selectedTabId: unknown): void {
     }
 }
 
-function validateLayout(value: unknown, windowIds: Set<string>, tabIds: Set<string>): asserts value is LaymanSerializedLayout {
-    if (value === null) return;
+function validateLayout(
+    value: unknown,
+    windowIds: Set<string>,
+    tabIds: Set<string>,
+    splitIds: Set<string>,
+    allowEmpty = false
+): asserts value is LaymanSerializedLayout {
+    if (value === null) {
+        if (allowEmpty) return;
+        fail("split children must be layout trees");
+    }
     if (!isRecord(value) || (value.kind !== "window" && value.kind !== "node")) fail("layout node kind is required");
     rejectUnknownKeys(
         value,
-        value.kind === "window" ? ["kind", "id", "tabs", "selectedTabId", "viewPercent"] : ["kind", "direction", "children", "viewPercent"],
+        value.kind === "window" ? ["kind", "id", "tabs", "selectedTabId", "viewPercent"] : ["kind", "id", "direction", "children", "viewPercent"],
         `layout ${value.kind}`
     );
     if (value.viewPercent !== undefined && (typeof value.viewPercent !== "number" || !Number.isFinite(value.viewPercent))) {
@@ -158,17 +169,19 @@ function validateLayout(value: unknown, windowIds: Set<string>, tabIds: Set<stri
     }
     if (value.kind === "window") {
         if (!isId(value.id)) fail("window id is required");
-        if (windowIds.has(value.id)) fail(`duplicate window id '${value.id}'`);
+        if (windowIds.has(value.id) || splitIds.has(value.id)) fail(`duplicate layout id '${value.id}'`);
         windowIds.add(value.id);
         if (!Array.isArray(value.tabs)) fail("window tabs must be an array");
         value.tabs.forEach((tab) => validateTab(tab, tabIds));
         validateSelection(value.tabs, value.selectedTabId);
         return;
     }
-    if ((value.direction !== "row" && value.direction !== "column") || !Array.isArray(value.children) || value.children.length < 2) {
+    if (!isId(value.id) || (value.direction !== "row" && value.direction !== "column") || !Array.isArray(value.children) || value.children.length < 2) {
         fail("split node must have direction and at least two children");
     }
-    value.children.forEach((child) => validateLayout(child, windowIds, tabIds));
+    if (splitIds.has(value.id) || windowIds.has(value.id)) fail(`duplicate layout id '${value.id}'`);
+    splitIds.add(value.id);
+    value.children.forEach((child) => validateLayout(child, windowIds, tabIds, splitIds));
 }
 
 /** Rejects malformed snapshots before they reach the reducer or a host view. */
@@ -179,11 +192,12 @@ export function validateLaymanSnapshot(value: unknown): asserts value is LaymanS
     rejectUnknownKeys(value, ["schemaVersion", "layout", "floatingWindows"], "snapshot");
     const windowIds = new Set<string>();
     const tabIds = new Set<string>();
-    validateLayout(value.layout, windowIds, tabIds);
+    const splitIds = new Set<string>();
+    validateLayout(value.layout, windowIds, tabIds, splitIds, true);
     value.floatingWindows.forEach((window, index) => {
         if (!isRecord(window) || !isId(window.id)) fail(`floating window ${index} id is required`);
         rejectUnknownKeys(window, ["id", "tabs", "selectedTabId", "position", "zIndex"], `floating window ${index}`);
-        if (windowIds.has(window.id)) fail(`duplicate window id '${window.id}'`);
+        if (windowIds.has(window.id) || splitIds.has(window.id)) fail(`duplicate layout id '${window.id}'`);
         windowIds.add(window.id);
         if (!Array.isArray(window.tabs)) fail(`floating window ${index} tabs must be an array`);
         window.tabs.forEach((tab) => validateTab(tab, tabIds));
@@ -208,9 +222,14 @@ function deserializeLayoutUnchecked(data: LaymanSerializedLayout): LaymanLayout<
         };
     }
     return {
+        id: data.id,
         direction: data.direction,
         viewPercent: data.viewPercent,
-        children: data.children.map(deserializeLayoutUnchecked) as [LaymanLayout<JsonValue>, LaymanLayout<JsonValue>, ...LaymanLayout<JsonValue>[]],
+        children: data.children.map((child) => deserializeLayoutUnchecked(child)!) as unknown as [
+            LaymanTree<JsonValue>,
+            LaymanTree<JsonValue>,
+            ...LaymanTree<JsonValue>[]
+        ],
     };
 }
 
@@ -222,7 +241,7 @@ export function deserializeTab(tab: LaymanSerializedTab): LaymanTab<JsonValue> {
 
 /** Reconstructs one layout tree from the exact current snapshot shape. */
 export function deserializeLayout(data: LaymanSerializedLayout): LaymanLayout<JsonValue> {
-    validateLayout(data, new Set<string>(), new Set<string>());
+    validateLayout(data, new Set<string>(), new Set<string>(), new Set<string>(), true);
     return deserializeLayoutUnchecked(data);
 }
 

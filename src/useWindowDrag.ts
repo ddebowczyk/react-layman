@@ -9,7 +9,7 @@ interface UseWindowDragOptions {
     windowId: string;
     path: WindowAddress;
     position: Position;
-    tabs: LaymanTab[];
+    tabs: readonly LaymanTab[];
     selectedTabId: string | null;
 }
 
@@ -27,8 +27,8 @@ export function useWindowDrag({windowId, path, position, tabs, selectedTabId}: U
     const finishDrag = (monitor: {didDrop: () => boolean}) => {
         if (isFloatingAddress(path) && !monitor.didDrop()) {
             layoutDispatch({
-                type: "setFloatingWindowPosition",
-                floatingId: path.floatingId,
+                type: "floating.position",
+                windowId,
                 position: {
                     top: position.top + currentMousePosition.top,
                     left: position.left + currentMousePosition.left,

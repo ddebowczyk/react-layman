@@ -79,6 +79,7 @@ export function Layman() {
 
                 layout.tabs.forEach((tab) => {
                     calculatedWindows.push({
+                        windowId: layout.id,
                         position,
                         path,
                         tab,
@@ -121,6 +122,7 @@ export function Layman() {
             // vary between passes below (see their call sites).
             const addSeparator = (childIndex: number, separatorIndex: number, separatorPosition: Position) => {
                 calculatedSeparators.push({
+                    splitId: layout.id,
                     nodePosition: position,
                     position: separatorPosition,
                     index: separatorIndex,
@@ -248,6 +250,7 @@ export function Layman() {
             });
             floatingWindow.tabs.forEach((tab) => {
                 calculatedWindows.push({
+                    windowId: floatingWindow.id,
                     position: floatingWindow.position,
                     path: {floatingId: floatingWindow.id},
                     tab,

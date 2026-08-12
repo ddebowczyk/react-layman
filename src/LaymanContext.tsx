@@ -2,6 +2,7 @@ import React, {createContext, useEffect, useReducer, useRef, useState} from "rea
 import {
     LaymanContextType,
     LaymanLayout,
+    LaymanState,
     LaymanTab,
     PaneRenderer,
     TabRenderer,
@@ -9,11 +10,24 @@ import {
     ToolbarButtonType,
     WindowAddress,
 } from "./types";
+import type {LaymanCommand} from "./core/commands";
+import {applyLaymanCommand} from "./core/engine";
+import {validateLaymanState} from "./core/validation";
 import {DndProvider} from "react-dnd";
 import {HTML5Backend} from "react-dnd-html5-backend";
 import {DropHighlight} from "./DropHighlight";
-import {LaymanReducer} from "./LaymanReducer";
 import {loadState, saveState} from "./persistence";
+
+function reduceLaymanState(state: LaymanState, command: LaymanCommand): LaymanState {
+    return applyLaymanCommand(state, command).next;
+}
+
+function initializeLaymanState(storageKey: string | undefined, initialState: LaymanState): LaymanState {
+    const restoredState = loadState(storageKey, initialState);
+    const validation = validateLaymanState(restoredState);
+    if (!validation.valid) throw new Error(`[Layman] initial state is invalid: ${validation.issues.join(", ")}`);
+    return restoredState;
+}
 
 // Define default values for the context
 const defaultContextValue: LaymanContextType = {
@@ -70,9 +84,9 @@ export const LaymanProvider = ({
     children,
 }: LaymanProviderProps) => {
     const [{layout, floatingWindows}, layoutDispatch] = useReducer(
-        LaymanReducer,
+        reduceLaymanState,
         {layout: initialLayout, floatingWindows: []},
-        (init) => loadState(storageKey, init)
+        (init) => initializeLaymanState(storageKey, init)
     );
 
     const saveTimeoutRef = useRef<number | undefined>(undefined);
@@ -106,7 +120,7 @@ export const LaymanProvider = ({
         width: 0,
         height: 0,
     });
-    const [draggedWindowTabs, setDraggedWindowTabs] = useState<LaymanTab[]>([]);
+    const [draggedWindowTabs, setDraggedWindowTabs] = useState<readonly LaymanTab[]>([]);
     const [windowDragStartPosition, setWindowDragStartPosition] = useState({
         x: 0,
         y: 0,

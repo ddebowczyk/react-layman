@@ -7,7 +7,7 @@ export default function AutoArrangButton() {
 
     const handleClick = () => {
         layoutDispatch({
-            type: "autoArrange",
+            type: "layout.autoArrange",
         });
     };
 

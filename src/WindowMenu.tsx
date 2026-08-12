@@ -3,12 +3,12 @@ import {LaymanContext} from "./LaymanContext";
 import {ToolbarButton} from "./ToolbarButton";
 import {AddIcon, CloseIcon, EllipsisIcon} from "./Icons";
 import {createLaymanTab} from "./createLaymanTab";
-import {LaymanTab, Position, WindowAddress} from "./types";
+import {LaymanTab, Position} from "./types";
 
 interface WindowMenuProps {
-    path: WindowAddress;
+    windowId: string;
     position: Position;
-    tabs: LaymanTab[];
+    tabs: readonly LaymanTab[];
     selectedTabId: string | null;
     open: boolean;
     setOpen: (open: boolean) => void;
@@ -22,7 +22,7 @@ interface WindowMenuProps {
  * popover that exposes tab selection, adding tabs, and the window control
  * buttons that would otherwise live in the toolbar.
  */
-export function WindowMenu({path, position, tabs, selectedTabId, open, setOpen, controlButtons}: WindowMenuProps) {
+export function WindowMenu({windowId, position, tabs, selectedTabId, open, setOpen, controlButtons}: WindowMenuProps) {
     const {layoutDispatch, renderTab, mutable} = useContext(LaymanContext);
 
     // parseInt returns NaN (not null/undefined) when the CSS variable is missing,
@@ -62,7 +62,7 @@ export function WindowMenu({path, position, tabs, selectedTabId, open, setOpen, 
                                 <button
                                     className="tab-selector"
                                     onMouseDown={() => {
-                                        layoutDispatch({type: "selectTab", path, tab});
+                                        layoutDispatch({type: "tab.select", tabId: tab.id});
                                         setOpen(false);
                                     }}
                                 >
@@ -71,7 +71,7 @@ export function WindowMenu({path, position, tabs, selectedTabId, open, setOpen, 
                                 {mutable && (
                                     <button
                                         className="close-tab"
-                                        onClick={() => layoutDispatch({type: "removeTab", path, tab})}
+                                        onClick={() => layoutDispatch({type: "tab.remove", tabId: tab.id})}
                                     >
                                         <CloseIcon />
                                     </button>
@@ -83,8 +83,8 @@ export function WindowMenu({path, position, tabs, selectedTabId, open, setOpen, 
                         <ToolbarButton
                             onClick={() => {
                                 const newTab = createLaymanTab("blank", {});
-                                layoutDispatch({type: "addTab", path, tab: newTab});
-                                layoutDispatch({type: "selectTab", path, tab: newTab});
+                                layoutDispatch({type: "tab.insert", tab: newTab, target: {kind: "window", windowId}, placement: "center"});
+                                layoutDispatch({type: "tab.select", tabId: newTab.id});
                             }}
                         >
                             <AddIcon />

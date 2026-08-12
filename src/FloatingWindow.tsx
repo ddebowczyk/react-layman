@@ -23,7 +23,7 @@ interface ResizeInteraction {
  * because their size comes from the split tree, is free-form resizing from
  * an edge/corner. That's the only floating-specific chrome left: a thin,
  * absolutely-positioned overlay spanning the floating window's current rect
- * with 8 drag handles that dispatch `setFloatingWindowPosition`.
+ * with 8 drag handles that dispatch `floating.position` commands.
  */
 function FloatingWindowResizeHandles({data}: {data: FloatingWindowData}) {
     const {layoutDispatch} = useContext(LaymanContext);
@@ -50,8 +50,8 @@ function FloatingWindowResizeHandles({data}: {data: FloatingWindowData}) {
             }
 
             layoutDispatch({
-                type: "setFloatingWindowPosition",
-                floatingId: data.id,
+                type: "floating.position",
+                windowId: data.id,
                 position: {top, left, width, height},
             });
         };
@@ -76,7 +76,7 @@ function FloatingWindowResizeHandles({data}: {data: FloatingWindowData}) {
     const startResize = (dir: ResizeDir) => (event: React.MouseEvent) => {
         event.preventDefault();
         event.stopPropagation();
-        layoutDispatch({type: "bringFloatingWindowToFront", floatingId: data.id});
+        layoutDispatch({type: "floating.focus", windowId: data.id});
         interactionRef.current = {dir, startX: event.clientX, startY: event.clientY, startPos: data.position};
     };
 

@@ -2,18 +2,19 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import {loadState, saveState} from "../src/persistence";
 import {serializeLayout} from "../src/Serializer";
 import type {FloatingWindowData, LaymanNode, LaymanState, LaymanWindow} from "../src/types";
-import {floatingWindow, tab, window as layoutWindow} from "./helpers";
+import {floatingWindow, node, tab, window as layoutWindow} from "./helpers";
 
 const KEY = "layman-test-layout";
 
 function makeLayout(): LaymanNode {
     return {
-        direction: "row",
-        viewPercent: 50,
-        children: [
+        ...node(
+            "split-main",
+            "row",
             {...layoutWindow("window-left", tab("Left", {path: "/a"}, "tab-left")), viewPercent: 50},
-            {...layoutWindow("window-right", tab("Right", {}, "tab-right")), viewPercent: 50},
-        ],
+            {...layoutWindow("window-right", tab("Right", {}, "tab-right")), viewPercent: 50}
+        ),
+        viewPercent: 50,
     };
 }
 
@@ -46,7 +47,7 @@ describe("saveState / loadState", () => {
         const layout = makeLayout();
         saveState(KEY, {layout, floatingWindows: []});
         const saved = JSON.parse(window.localStorage.getItem(KEY) as string);
-        expect(saved.schemaVersion).toBe(1);
+        expect(saved.schemaVersion).toBe(2);
         expect(saved.layout).toEqual(serializeLayout(layout));
     });
 

@@ -9,7 +9,7 @@ import {
     validateLaymanSnapshot,
 } from "../src/Serializer";
 import type {FloatingWindowData, LaymanNode, LaymanSerializedState, LaymanWindow} from "../src/types";
-import {tab, window} from "./helpers";
+import {node, tab, window} from "./helpers";
 
 describe("current snapshot serialization", () => {
     it("serializes a window with durable window, tab, and selection identities", () => {
@@ -56,10 +56,7 @@ describe("versioned state snapshots", () => {
         const left = tab("Left", {path: "/left"}, "tab-left");
         const right = tab("Right", {}, "tab-right");
         const floater = tab("Floater", {kind: "note"}, "tab-float");
-        const layout: LaymanNode = {
-            direction: "row",
-            children: [window("window-left", left), window("window-right", right)],
-        };
+        const layout: LaymanNode = node("split-main", "row", window("window-left", left), window("window-right", right));
         const floatingWindow: FloatingWindowData = {
             id: "window-floating",
             tabs: [floater],
@@ -69,18 +66,19 @@ describe("versioned state snapshots", () => {
         };
 
         const snapshot = serializeState({layout, floatingWindows: [floatingWindow]});
-        expect(snapshot.schemaVersion).toBe(1);
+        expect(snapshot.schemaVersion).toBe(2);
         expect(serializeState(deserializeState(snapshot))).toEqual(snapshot);
         expect(serializeFloatingWindow(floatingWindow).id).toBe("window-floating");
     });
 
     it("rejects old, incomplete, and internally inconsistent data", () => {
         expect(() => deserializeState({layout: null, floatingWindows: []})).toThrow("schemaVersion");
+        expect(() => deserializeState({schemaVersion: 1, layout: null, floatingWindows: []})).toThrow("schemaVersion");
         expect(() => deserializeTab({id: "tab", name: "old", data: {}} as never)).toThrow("title");
-        expect(() => deserializeState({schemaVersion: 1, layout: null, floatingWindows: [], extra: true})).toThrow("unknown property");
+        expect(() => deserializeState({schemaVersion: 2, layout: null, floatingWindows: [], extra: true})).toThrow("unknown property");
 
         const snapshot: LaymanSerializedState = {
-            schemaVersion: 1,
+            schemaVersion: 2,
             layout: {
                 kind: "window",
                 id: "window-shared",
@@ -97,7 +95,7 @@ describe("versioned state snapshots", () => {
                 },
             ],
         };
-        expect(() => validateLaymanSnapshot(snapshot)).toThrow("duplicate window id");
+        expect(() => validateLaymanSnapshot(snapshot)).toThrow("duplicate layout id");
 
         snapshot.floatingWindows[0].id = "window-float";
         snapshot.layout = {
@@ -107,5 +105,21 @@ describe("versioned state snapshots", () => {
             tabs: [{id: "tab-a", title: "A", data: {}}],
         };
         expect(() => validateLaymanSnapshot(snapshot)).toThrow("non-empty window must select a tab");
+
+        expect(() =>
+            deserializeState({
+                schemaVersion: 2,
+                layout: {
+                    kind: "node",
+                    id: "split-invalid",
+                    direction: "row",
+                    children: [
+                        {kind: "window", id: "window-main", selectedTabId: "tab-main", tabs: [{id: "tab-main", title: "Main", data: {}}]},
+                        null,
+                    ],
+                },
+                floatingWindows: [],
+            })
+        ).toThrow("split children");
     });
 });

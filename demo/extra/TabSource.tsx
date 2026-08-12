@@ -1,15 +1,15 @@
 import {useDrag} from "react-dnd";
 import {useContext, useEffect} from "react";
-import {LaymanHeuristic, LaymanContext, TabData, TabType} from "../../src";
+import {createLaymanTab, LaymanContext, TabType} from "../../src";
 
-export default function TabSource({tabName, heuristic}: {tabName: string; heuristic: LaymanHeuristic}) {
+export default function TabSource({tabName, targetWindowId}: {tabName: string; targetWindowId: string}) {
     const {setGlobalDragging, layoutDispatch} = useContext(LaymanContext);
 
     const [{isDragging}, drag] = useDrag({
         type: TabType,
         item: {
             path: undefined,
-            tab: new TabData(tabName),
+            tab: createLaymanTab(tabName, {}),
         },
         collect: (monitor) => ({
             isDragging: monitor.isDragging(),
@@ -21,11 +21,11 @@ export default function TabSource({tabName, heuristic}: {tabName: string; heuris
     }, [isDragging, setGlobalDragging]);
 
     const handleDoubleClick = () => {
-        // Add tab to the top left window
         layoutDispatch({
-            type: "addTabWithHeuristic",
-            tab: new TabData(tabName),
-            heuristic: heuristic,
+            type: "tab.insert",
+            tab: createLaymanTab(tabName, {}),
+            target: {kind: "window", windowId: targetWindowId},
+            placement: "center",
         });
     };
 
@@ -33,7 +33,7 @@ export default function TabSource({tabName, heuristic}: {tabName: string; heuris
         <div
             ref={drag}
             className="tab-source"
-            title={`Drag to place · Double-click to add to ${heuristic === "topleft" ? "top-left" : "top-right"}`}
+            title={`Drag to place · Double-click to add to ${targetWindowId}`}
             style={{
                 height: 32,
                 minWidth: 32,

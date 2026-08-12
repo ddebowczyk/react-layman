@@ -6,12 +6,13 @@ import {DragData, Position, WindowAddress} from "./types";
 import {isFloatingAddress} from "./utils";
 
 interface WindowDropTargetProps {
+    windowId: string;
     path: WindowAddress;
     position: Position;
     placement: "top" | "left" | "bottom" | "right" | "center";
 }
 
-export function WindowDropTarget({path, position, placement}: WindowDropTargetProps) {
+export function WindowDropTarget({windowId, path, position, placement}: WindowDropTargetProps) {
     const {globalContainerSize, layoutDispatch, setDropHighlightPosition, maxDepth, showTabs} =
         useContext(LaymanContext);
     const newDropHighlightPosition = useRef<Position>({
@@ -93,17 +94,16 @@ export function WindowDropTarget({path, position, placement}: WindowDropTargetPr
 
             if (itemType === TabType && "tab" in item) {
                 layoutDispatch({
-                    type: "moveTab",
-                    tab: item.tab,
-                    path: item.path ?? [-1],
-                    newPath: path,
+                    type: "tab.move",
+                    tabId: item.tab.id,
+                    target: {kind: "window", windowId},
                     placement: placement,
                 });
             } else if (itemType === WindowType && "tabs" in item && !isFloatingAddress(item.path)) {
                 layoutDispatch({
-                    type: "moveWindow",
-                    path: item.path,
-                    newPath: path,
+                    type: "window.move",
+                    windowId: item.id,
+                    target: {kind: "window", windowId},
                     placement: placement,
                 });
             }

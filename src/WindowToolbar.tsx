@@ -2,11 +2,11 @@ import {useContext, useEffect, useRef, useState} from "react";
 import {SingleTab, Tab} from "./WindowTabs";
 import {ToolbarButton} from "./ToolbarButton";
 import {LaymanContext} from "./LaymanContext";
-import {createLaymanTab, createLaymanWindow} from "./createLaymanTab";
+import {createLaymanTab} from "./createLaymanTab";
 import {WindowDropTarget} from "./WindowDropTarget";
 import {WindowMenu} from "./WindowMenu";
 import {Position, ToolbarButtonType, ToolBarProps} from "./types";
-import {findWindowAtPoint} from "./layoutGeometry";
+import {findWindowRectAtPoint} from "./layoutGeometry";
 import {
     AddIcon,
     BottomSplitIcon,
@@ -97,7 +97,7 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
     // (e.g. from user interaction), or it would override the user's own selection.
     useEffect(() => {
         const selectedTab = tabs.find((tab) => tab.id === selectedTabId);
-        if (selectedTab) layoutDispatch({type: "selectTab", path, tab: selectedTab});
+        if (selectedTab) layoutDispatch({type: "tab.select", tabId: selectedTab.id});
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -131,21 +131,23 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
 
     // Move this window out of the layout into a brand-new floating window,
     // keeping its current calculated size/position. Expressed as a single
-    // `moveWindow` action so the same tabs and selection move by reference -
+    // `window.move` command so the same tabs and selection move by reference -
     // nothing is destroyed and recreated, so pane state survives.
     const floatWindow = () => {
         if (isMaximized) setMaximizedPath(null);
         layoutDispatch({
-            type: "moveWindow",
-            path,
-            newPath: {floatingId: windowId},
-            placement: "center",
-            position: {
-                top: rawPosition.top,
-                left: rawPosition.left,
-                width: rawPosition.width,
-                height: rawPosition.height,
+            type: "window.move",
+            windowId,
+            target: {
+                kind: "floating",
+                position: {
+                    top: rawPosition.top,
+                    left: rawPosition.left,
+                    width: rawPosition.width,
+                    height: rawPosition.height,
+                },
             },
+            placement: "center",
         });
     };
 
@@ -155,29 +157,30 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
     const unfloatWindow = () => {
         if (!isFloatingAddress(path)) return;
         const center = {x: position.left + position.width / 2, y: position.top + position.height / 2};
-        let targetPath = findWindowAtPoint(layout, globalContainerSize, center);
+        const target = layout ? findWindowRectAtPoint(layout, globalContainerSize, center) : null;
 
         // Fallback: if the center is over nothing but the layout is empty,
         // seed a brand new root window. Otherwise, do nothing (stay floating).
-        if (targetPath === null) {
+        if (target === null) {
             if (!layout) {
-                targetPath = [];
+                layoutDispatch({type: "window.move", windowId, target: {kind: "root"}, placement: "center"});
             } else {
                 return;
             }
+            return;
         }
 
         layoutDispatch({
-            type: "moveWindow",
-            path,
-            newPath: targetPath,
+            type: "window.move",
+            windowId,
+            target: {kind: "window", windowId: target.windowId},
             placement: "center",
         });
     };
 
     // Bring this floating window to the front on any interaction with it.
     const bringToFront = () => {
-        if (isFloatingAddress(path)) layoutDispatch({type: "bringFloatingWindowToFront", floatingId: path.floatingId});
+        if (isFloatingAddress(path)) layoutDispatch({type: "floating.focus", windowId});
     };
 
     // The four split buttons only differ by which edge they split towards and
@@ -202,9 +205,9 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
                     key={index}
                     onClick={() =>
                         layoutDispatch({
-                            type: "addWindow",
-                            path: path,
-                            window: createLaymanWindow([createLaymanTab("blank", {})]),
+                            type: "tab.insert",
+                            tab: createLaymanTab("blank", {}),
+                            target: {kind: "window", windowId},
                             placement,
                         })
                     }
@@ -238,8 +241,8 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
                         key={index}
                         onClick={() => {
                             layoutDispatch({
-                                type: "removeWindow",
-                                path: path,
+                                type: "window.close",
+                                windowId,
                             });
                         }}
                     >
@@ -298,16 +301,14 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
                                         isSelected={tab.id === selectedTabId}
                                         onDelete={() =>
                                             layoutDispatch({
-                                                type: "removeTab",
-                                                path: path,
-                                                tab,
+                                                type: "tab.remove",
+                                                tabId: tab.id,
                                             })
                                         }
                                         onMouseDown={() =>
                                             layoutDispatch({
-                                                type: "selectTab",
-                                                path: path,
-                                                tab,
+                                                type: "tab.select",
+                                                tabId: tab.id,
                                             })
                                         }
                                     />
@@ -319,9 +320,8 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
                                 tab={tabs[0]}
                                 onDelete={() =>
                                     layoutDispatch({
-                                        type: "removeTab",
-                                        path: path,
-                                        tab: tabs[0],
+                                        type: "tab.remove",
+                                        tabId: tabs[0].id,
                                     })
                                 }
                                 onMouseDown={(event) => {
@@ -330,9 +330,8 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
                                         y: event.clientY,
                                     });
                                     layoutDispatch({
-                                        type: "selectTab",
-                                        path: path,
-                                        tab: tabs[0],
+                                        type: "tab.select",
+                                        tabId: tabs[0].id,
                                     });
                                 }}
                             />
@@ -344,14 +343,14 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
                             onClick={() => {
                                 const newTab = createLaymanTab("blank", {});
                                 layoutDispatch({
-                                    type: "addTab",
-                                    path: path,
+                                    type: "tab.insert",
                                     tab: newTab,
+                                    target: {kind: "window", windowId},
+                                    placement: "center",
                                 });
                                 layoutDispatch({
-                                    type: "selectTab",
-                                    path: path,
-                                    tab: newTab,
+                                    type: "tab.select",
+                                    tabId: newTab.id,
                                 });
                             }}
                         >
@@ -374,7 +373,7 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
                 </div>
             ) : (
                 <WindowMenu
-                    path={path}
+                    windowId={windowId}
                     position={position}
                     tabs={tabs}
                     selectedTabId={selectedTabId}
@@ -394,11 +393,11 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
                         pointerEvents: globalDragging ? "auto" : "none",
                     }}
                 >
-                    <WindowDropTarget path={path} position={position} placement="top" />
-                    <WindowDropTarget path={path} position={position} placement="bottom" />
-                    <WindowDropTarget path={path} position={position} placement="left" />
-                    <WindowDropTarget path={path} position={position} placement="right" />
-                    <WindowDropTarget path={path} position={position} placement="center" />
+                    <WindowDropTarget windowId={windowId} path={path} position={position} placement="top" />
+                    <WindowDropTarget windowId={windowId} path={path} position={position} placement="bottom" />
+                    <WindowDropTarget windowId={windowId} path={path} position={position} placement="left" />
+                    <WindowDropTarget windowId={windowId} path={path} position={position} placement="right" />
+                    <WindowDropTarget windowId={windowId} path={path} position={position} placement="center" />
                 </div>
             )}
         </>

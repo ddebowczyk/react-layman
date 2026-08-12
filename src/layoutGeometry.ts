@@ -9,13 +9,13 @@ import {LaymanLayout, LaymanPath, Position} from "./types";
 export function computeWindowRects(
     layout: LaymanLayout,
     container: {width: number; height: number}
-): Array<{path: LaymanPath; position: Position}> {
-    const result: Array<{path: LaymanPath; position: Position}> = [];
+): Array<{windowId: string; path: LaymanPath; position: Position}> {
+    const result: Array<{windowId: string; path: LaymanPath; position: Position}> = [];
 
     function walk(node: LaymanLayout, position: Position, path: LaymanPath) {
         if (!node) return;
         if ("tabs" in node) {
-            result.push({path, position});
+            result.push({windowId: node.id, path, position});
             return;
         }
         const {direction, children} = node;
@@ -47,7 +47,7 @@ export function findWindowRectAtPoint(
     layout: LaymanLayout,
     container: {width: number; height: number},
     point: {x: number; y: number}
-): {path: LaymanPath; position: Position} | null {
+): {windowId: string; path: LaymanPath; position: Position} | null {
     const rects = computeWindowRects(layout, container);
     // Iterate in reverse so deeper/later windows win ties.
     for (let i = rects.length - 1; i >= 0; i--) {

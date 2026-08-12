@@ -3,7 +3,7 @@ import {LaymanContext} from "./LaymanContext";
 import {deepEqual} from "./utils";
 import {SeparatorProps} from "./types";
 
-export function Separator({nodePosition, position, index, direction, path, separators}: SeparatorProps) {
+export function Separator({splitId, nodePosition, position, index, direction, path, separators}: SeparatorProps) {
     const {globalContainerSize, layoutDispatch} = useContext(LaymanContext);
     const [isDragging, setIsDragging] = useState(false);
 
@@ -73,12 +73,11 @@ export function Separator({nodePosition, position, index, direction, path, separ
             event.preventDefault();
             if (!isDragging) return;
             const splitPercentage = calculateSplitPercentage(event);
-            const basePath = path.slice(0, path.length - 1);
             layoutDispatch({
-                type: "moveSeparator",
-                path: basePath,
+                type: "split.resize",
+                splitId,
                 index,
-                newSplitPercentage: splitPercentage,
+                leadingPercent: splitPercentage,
             });
         };
 
@@ -107,7 +106,7 @@ export function Separator({nodePosition, position, index, direction, path, separ
         nodePosition.left,
         nodePosition.top,
         nodePosition.width,
-        path,
+        splitId,
         previousSeparator,
         separatorThickness,
         toolbarHeight,

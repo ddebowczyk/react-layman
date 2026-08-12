@@ -3,6 +3,7 @@ import {createLaymanTab} from "./createLaymanTab";
 import {WindowProps} from "./types";
 
 export const WindowContext = createContext<WindowProps>({
+    windowId: "",
     position: {
         top: 0,
         left: 0,
