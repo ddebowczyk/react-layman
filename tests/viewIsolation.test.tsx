@@ -58,6 +58,9 @@ describe("Layman view isolation", () => {
         expect(left.querySelector('[data-layman-component="drag-border-layer"]')).not.toBe(
             right.querySelector('[data-layman-component="drag-border-layer"]')
         );
+        expect(left.querySelector(".layman-drop-highlight")).not.toBeNull();
+        expect(right.querySelector(".layman-drop-highlight")).not.toBeNull();
+        expect(left.querySelector(".layman-drop-highlight")).not.toBe(right.querySelector(".layman-drop-highlight"));
         expect(left.querySelector<HTMLElement>('[data-layman-component="toolbar"]')?.style.width).toBe("396px");
         expect(right.querySelector<HTMLElement>('[data-layman-component="toolbar"]')?.style.width).toBe("796px");
 

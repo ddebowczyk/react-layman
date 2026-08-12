@@ -13,8 +13,7 @@ interface WindowDropTargetProps {
 }
 
 export function WindowDropTarget({windowId, path, position, placement}: WindowDropTargetProps) {
-    const {globalContainerSize, layoutDispatch, setDropHighlightPosition, maxDepth, showTabs, metrics} =
-        useContext(LaymanContext);
+    const {layoutDispatch, setDropHighlightPosition, maxDepth, showTabs, metrics} = useContext(LaymanContext);
     const newDropHighlightPosition = useRef<Position>({
         top: 0,
         left: 0,
@@ -53,14 +52,8 @@ export function WindowDropTarget({windowId, path, position, placement}: WindowDr
             dropPosition.width = dropPosition.width / 2;
         }
 
-        // Include total offset of layout
-        dropPosition.top += globalContainerSize.top;
-        dropPosition.left += globalContainerSize.left;
-
         newDropHighlightPosition.current = dropPosition;
     }, [
-        globalContainerSize.left,
-        globalContainerSize.top,
         placement,
         position.height,
         position.left,

@@ -1,5 +1,4 @@
 import React, {createContext, useState} from "react";
-import {DropHighlight} from "./DropHighlight";
 import type {LaymanCommand} from "./core/commands";
 import type {LaymanInspection} from "./core/inspection";
 import type {LaymanControllerTransition} from "./controller/types";
@@ -26,6 +25,7 @@ const defaultContextValue: LaymanContextType = {
     layoutDispatch: () => {
         throw new Error("[Layman] a view controller is required");
     },
+    dropHighlightPosition: {top: 0, left: 0, width: 0, height: 0},
     setDropHighlightPosition: () => {},
     globalDragging: false,
     setGlobalDragging: () => {},
@@ -111,6 +111,7 @@ export const LaymanRuntime = ({
                 setMetrics,
                 layout: state.layout,
                 layoutDispatch: dispatch,
+                dropHighlightPosition,
                 setDropHighlightPosition,
                 globalDragging,
                 setGlobalDragging,
@@ -139,7 +140,6 @@ export const LaymanRuntime = ({
             }}
         >
             <LaymanDndProvider config={dnd}>
-                <DropHighlight position={dropHighlightPosition} isDragging={globalDragging} />
                 {children}
             </LaymanDndProvider>
         </LaymanContext.Provider>

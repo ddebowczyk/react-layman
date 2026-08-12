@@ -91,6 +91,7 @@ export interface LaymanContextType {
     setMetrics: Dispatch<SetStateAction<LaymanViewMetrics>>;
     layout: LaymanLayout;
     layoutDispatch: (command: LaymanCommand) => LaymanControllerTransition;
+    dropHighlightPosition: Position;
     setDropHighlightPosition: Dispatch<Position>;
     globalDragging: boolean;
     setGlobalDragging: Dispatch<boolean>;

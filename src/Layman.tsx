@@ -8,6 +8,7 @@ import {addressKey} from "./utils";
 import {FloatingResizeHandleLayer} from "./FloatingWindow";
 import {FloatingDockZones} from "./FloatingDockZones";
 import {readLaymanViewMetrics, sameLaymanViewMetrics} from "./view/metrics";
+import {DropHighlight} from "./DropHighlight";
 
 /**
  * Entry point for Layman Window Manager
@@ -26,6 +27,8 @@ export function LaymanCanvas() {
         rootClassName,
         rootStyle,
         setDragBorderElement,
+        dropHighlightPosition,
+        globalDragging,
     } = useContext(LaymanContext);
     // Reference for parent div
     const laymanRef = useRef<HTMLDivElement | null>(null);
@@ -288,6 +291,7 @@ export function LaymanCanvas() {
             data-layman-view={viewId}
         >
             <div ref={setDragBorderElement} data-layman-component="drag-border-layer" />
+            <DropHighlight position={dropHighlightPosition} isDragging={globalDragging} />
             {/* Shown behind any floating windows when the tree is empty. */}
             {!layout && renderNull()}
             {toolbars.map((props) => (
