@@ -1,35 +1,18 @@
-import React, {createContext, useEffect, useReducer, useRef, useState} from "react";
-import {
-    LaymanContextType,
-    LaymanLayout,
-    LaymanState,
-    LaymanTab,
-    PaneRenderer,
-    TabRenderer,
-    Position,
-    ToolbarButtonType,
-    WindowAddress,
-} from "./types";
-import type {LaymanCommand} from "./core/commands";
-import {applyLaymanCommand} from "./core/engine";
-import {validateLaymanState} from "./core/validation";
+import React, {createContext, useState} from "react";
 import {DndProvider} from "react-dnd";
 import {HTML5Backend} from "react-dnd-html5-backend";
 import {DropHighlight} from "./DropHighlight";
-import {loadState, saveState} from "./persistence";
+import type {LaymanCommand} from "./core/commands";
+import {
+    LaymanContextType,
+    LaymanState,
+    PaneRenderer,
+    Position,
+    TabRenderer,
+    ToolbarButtonType,
+    WindowAddress,
+} from "./types";
 
-function reduceLaymanState(state: LaymanState, command: LaymanCommand): LaymanState {
-    return applyLaymanCommand(state, command).next;
-}
-
-function initializeLaymanState(storageKey: string | undefined, initialState: LaymanState): LaymanState {
-    const restoredState = loadState(storageKey, initialState);
-    const validation = validateLaymanState(restoredState);
-    if (!validation.valid) throw new Error(`[Layman] initial state is invalid: ${validation.issues.join(", ")}`);
-    return restoredState;
-}
-
-// Define default values for the context
 const defaultContextValue: LaymanContextType = {
     globalContainerSize: {top: 0, left: 0, width: 0, height: 0},
     setGlobalContainerSize: () => {},
@@ -44,89 +27,53 @@ const defaultContextValue: LaymanContextType = {
     setWindowDragStartPosition: () => {},
     renderPane: () => <></>,
     renderTab: () => <></>,
-    mutable: false,
+    mutable: true,
     toolbarButtons: [],
-    renderNull: <></>,
+    renderNull: () => <></>,
     maximizedPath: null,
     setMaximizedPath: () => {},
     floatingWindows: [],
     maxDepth: Infinity,
     showTabs: true,
+    viewId: "layman",
+    ariaLabel: undefined,
 };
 
-type LaymanProviderProps = {
-    initialLayout: LaymanLayout;
+interface LaymanRuntimeProps {
+    state: LaymanState;
+    dispatch(command: LaymanCommand): void;
     renderPane: PaneRenderer;
     renderTab: TabRenderer;
-    renderNull: JSX.Element;
-    mutable?: boolean;
-    toolbarButtons?: Array<ToolbarButtonType>;
-    storageKey?: string;
-    // Maximum split-nesting depth (depth = path.length). Default: no limit.
-    maxDepth?: number;
-    // Show/hide the window tab row. Default: true.
-    showTabs?: boolean;
+    renderNull: () => JSX.Element;
+    mutable: boolean;
+    maxDepth: number;
+    showTabs: boolean;
+    viewId: string;
+    ariaLabel?: string;
     children: React.ReactNode;
-};
+}
 
-export const LaymanContext = createContext<LaymanContextType>(defaultContextValue);
+const defaultToolbarButtons: readonly ToolbarButtonType[] = ["splitBottom", "splitRight", "maximize", "float", "close"];
 
-export const LaymanProvider = ({
-    initialLayout,
+/** Internal React runtime. Public hosts use LaymanView. */
+export const LaymanRuntime = ({
+    state,
+    dispatch,
     renderPane,
     renderTab,
     renderNull,
-    mutable = false,
-    toolbarButtons = [],
-    storageKey,
-    maxDepth = Infinity,
-    showTabs = true,
+    mutable,
+    maxDepth,
+    showTabs,
+    viewId,
+    ariaLabel,
     children,
-}: LaymanProviderProps) => {
-    const [{layout, floatingWindows}, layoutDispatch] = useReducer(
-        reduceLaymanState,
-        {layout: initialLayout, floatingWindows: []},
-        (init) => initializeLaymanState(storageKey, init)
-    );
-
-    const saveTimeoutRef = useRef<number | undefined>(undefined);
-    useEffect(() => {
-        if (!storageKey) return;
-        if (saveTimeoutRef.current !== undefined) {
-            window.clearTimeout(saveTimeoutRef.current);
-        }
-        saveTimeoutRef.current = window.setTimeout(() => {
-            saveState(storageKey, {layout, floatingWindows});
-            saveTimeoutRef.current = undefined;
-        }, 150);
-        return () => {
-            if (saveTimeoutRef.current !== undefined) {
-                window.clearTimeout(saveTimeoutRef.current);
-                saveTimeoutRef.current = undefined;
-                saveState(storageKey, {layout, floatingWindows});
-            }
-        };
-    }, [layout, floatingWindows, storageKey]);
-    // Size of Layman container
-    const [globalContainerSize, setGlobalContainerSize] = useState<Position>({
-        top: 0,
-        left: 0,
-        width: 0,
-        height: 0,
-    });
-    const [dropHighlightPosition, setDropHighlightPosition] = useState<Position>({
-        top: 0,
-        left: 0,
-        width: 0,
-        height: 0,
-    });
-    const [draggedWindowTabs, setDraggedWindowTabs] = useState<readonly LaymanTab[]>([]);
-    const [windowDragStartPosition, setWindowDragStartPosition] = useState({
-        x: 0,
-        y: 0,
-    });
-    const [globalDragging, setGlobalDragging] = useState<boolean>(false);
-    // Ephemeral UI state: which window is currently maximized.
+}: LaymanRuntimeProps) => {
+    const [globalContainerSize, setGlobalContainerSize] = useState<Position>({top: 0, left: 0, width: 0, height: 0});
+    const [dropHighlightPosition, setDropHighlightPosition] = useState<Position>({top: 0, left: 0, width: 0, height: 0});
+    const [draggedWindowTabs, setDraggedWindowTabs] = useState<LaymanContextType["draggedWindowTabs"]>([]);
+    const [windowDragStartPosition, setWindowDragStartPosition] = useState({x: 0, y: 0});
+    const [globalDragging, setGlobalDragging] = useState(false);
     const [maximizedPath, setMaximizedPath] = useState<WindowAddress | null>(null);
 
     return (
@@ -134,8 +81,10 @@ export const LaymanProvider = ({
             value={{
                 globalContainerSize,
                 setGlobalContainerSize,
-                layout,
-                layoutDispatch,
+                layout: state.layout,
+                layoutDispatch: (command) => {
+                    dispatch(command);
+                },
                 setDropHighlightPosition,
                 globalDragging,
                 setGlobalDragging,
@@ -146,20 +95,24 @@ export const LaymanProvider = ({
                 renderPane,
                 renderTab,
                 mutable,
-                toolbarButtons,
+                toolbarButtons: defaultToolbarButtons,
                 renderNull,
                 maximizedPath,
                 setMaximizedPath,
-                floatingWindows,
+                floatingWindows: state.floatingWindows,
                 maxDepth,
                 showTabs,
+                viewId,
+                ariaLabel,
             }}
         >
             <DndProvider backend={HTML5Backend}>
                 <DropHighlight position={dropHighlightPosition} isDragging={globalDragging} />
-                <div id="drag-window-border"></div>
+                <div id={`${viewId}-drag-window-border`}></div>
                 {children}
             </DndProvider>
         </LaymanContext.Provider>
     );
 };
+
+export const LaymanContext = createContext<LaymanContextType>(defaultContextValue);

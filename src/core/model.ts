@@ -1,6 +1,12 @@
-/** JSON values are the only values that may cross the Layman host boundary. */
+/**
+ * JSON values are the only values that may cross the Layman host boundary.
+ *
+ * `object` permits ordinary TypeScript interfaces as tab-data generics. An
+ * interface with JSON fields cannot satisfy a recursive index signature, so
+ * the runtime boundary remains the authoritative JSON validation point.
+ */
 export type JsonPrimitive = string | number | boolean | null;
-export type JsonValue = JsonPrimitive | JsonValue[] | {readonly [key: string]: JsonValue};
+export type JsonValue = JsonPrimitive | JsonValue[] | {readonly [key: string]: JsonValue} | object;
 
 export type LaymanDirection = "column" | "row";
 export type LaymanPlacement = "top" | "bottom" | "left" | "right" | "center";

@@ -76,8 +76,8 @@ export interface WindowProps {
     zIndex?: number;
 }
 
-export type PaneRenderer = (tab: LaymanTab) => JSX.Element;
-export type TabRenderer = (tab: LaymanTab) => string | JSX.Element;
+export type PaneRenderer = (tab: LaymanTab, windowId: string, selected: boolean) => JSX.Element;
+export type TabRenderer = (tab: LaymanTab, windowId: string, selected: boolean) => string | JSX.Element;
 
 export type ToolbarButtonType =
     | "splitLeft"
@@ -107,12 +107,14 @@ export interface LaymanContextType {
     renderTab: TabRenderer;
     mutable: boolean;
     toolbarButtons?: readonly ToolbarButtonType[];
-    renderNull: JSX.Element;
+    renderNull: () => JSX.Element;
     maximizedPath: WindowAddress | null;
     setMaximizedPath: Dispatch<SetStateAction<WindowAddress | null>>;
     floatingWindows: readonly FloatingWindowData[];
     maxDepth: number;
     showTabs: boolean;
+    viewId: string;
+    ariaLabel?: string;
 }
 
 export type LaymanSchemaVersion = 2;

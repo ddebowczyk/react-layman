@@ -5,6 +5,14 @@
     "description": "A dynamic tiling layout manager made for React",
     "main": "lib/react-layman.js",
     "types": "lib/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./lib/index.d.ts",
+            "import": "./lib/react-layman.js",
+            "default": "./lib/react-layman.js"
+        },
+        "./styles.css": "./lib/index.css"
+    },
     "files": [
         "lib"
     ],

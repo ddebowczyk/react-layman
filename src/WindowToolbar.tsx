@@ -296,6 +296,7 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
                                 return (
                                     <Tab
                                         key={tab.id}
+                                        windowId={windowId}
                                         path={path}
                                         tab={tab}
                                         isSelected={tab.id === selectedTabId}
@@ -318,6 +319,7 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
                             <SingleTab
                                 dragRef={singleTabDrag}
                                 tab={tabs[0]}
+                                windowId={windowId}
                                 onDelete={() =>
                                     layoutDispatch({
                                         type: "tab.remove",

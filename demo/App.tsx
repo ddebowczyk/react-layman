@@ -1,137 +1,53 @@
-import {LaymanProvider, Layman, LaymanTab} from "../src";
+import {useState} from "react";
+import {LaymanComponents, LaymanState, LaymanView, useLaymanController} from "../src";
 import Pane from "./Pane";
-import TabSource from "./extra/TabSource";
-import NullLayout from "./extra/NullLayout";
-import AutoArrangeButton from "./extra/AutoArrangeButton";
-import Toggle from "./extra/Toggle";
 import Button from "./extra/Button";
-import NumberStepper from "./extra/NumberStepper";
 import FloatingPanel from "./extra/FloatingPanel";
+import NumberStepper from "./extra/NumberStepper";
+import Toggle from "./extra/Toggle";
 import {initialLayout} from "./initialLayout";
-import {ReactNode, useState} from "react";
+import type {ModuleDescriptor} from "./modules";
 
-/** Labeled row used to group related controls inside the floating panel. */
-function PanelSection({label, children}: {label: string; children: ReactNode}) {
-    return (
-        <div style={{display: "flex", flexDirection: "column", gap: 6}}>
-            <span style={{fontSize: 11, fontWeight: 600, textTransform: "uppercase", opacity: 0.6}}>{label}</span>
-            <div style={{display: "flex", alignItems: "center"}}>{children}</div>
-        </div>
-    );
-}
+const components: LaymanComponents<ModuleDescriptor> = {
+    Pane: ({tab}) => <Pane paneId={`${tab.data.kind}:${tab.data.moduleId}`} />,
+    Tab: ({tab}) => <>{tab.title}</>,
+    Empty: ({dispatch}) => (
+        <button
+            onClick={() =>
+                dispatch({
+                    type: "tab.insert",
+                    tab: {id: "tab-new", title: "New module", data: {kind: "editor", moduleId: "new"}},
+                    target: {kind: "root"},
+                    placement: "center",
+                    windowId: "window-new",
+                })
+            }
+        >
+            Add a module
+        </button>
+    ),
+};
 
 export default function App() {
-    /**
-     * Renders the pane content shown inside a window for the given tab.
-     */
-    const renderPane = (tab: LaymanTab): JSX.Element => <Pane paneId={tab.id} />;
-
-    /**
-     * Renders the label shown on a tab, for display purposes.
-     */
-    const renderTab = (tab: LaymanTab) => tab.title;
-
-    // State to edit mutability of layout
-    const [mutable, setMutable] = useState(true);
-
-    // Demo-only: toggle a sidebar to exercise the layout's resize handling.
-    const [showSidebar, setShowSidebar] = useState(false);
-
-    // State to toggle between tab bar and compact window menu.
+    const [state, setState] = useState<LaymanState<ModuleDescriptor>>({layout: initialLayout, floatingWindows: []});
     const [showTabs, setShowTabs] = useState(true);
-
-    // State to control the maximum split-nesting depth of the layout.
     const [maxDepth, setMaxDepth] = useState(4);
-
-    const storageKey = "layman-demo-layout";
-    const handleReset = () => {
-        window.localStorage.removeItem(storageKey);
-        window.location.reload();
-    };
+    const [mutable, setMutable] = useState(true);
+    const controller = useLaymanController({state, onStateChange: setState});
 
     return (
-        <LaymanProvider
-            initialLayout={initialLayout}
-            renderPane={renderPane}
-            renderTab={renderTab}
-            renderNull={<NullLayout />}
-            mutable={mutable}
-            toolbarButtons={["splitBottom", "splitRight", "maximize", "float"]}
-            storageKey={storageKey}
-            showTabs={showTabs}
-            maxDepth={maxDepth}
-        >
-            <div
-                style={{
-                    color: "#cdd6f4",
-                    backgroundColor: "#232634",
-                }}
-            >
-                <FloatingPanel title="Layman Controls">
-                    {/* Tab sources */}
-                    <PanelSection label="Add to Top Left">
-                        <TabSource tabName={"A"} targetWindowId="window-home" />
-                        <TabSource tabName={"B"} targetWindowId="window-home" />
-                        <TabSource tabName={"C"} targetWindowId="window-home" />
-                    </PanelSection>
-                    <PanelSection label="Add to Top Right">
-                        <TabSource tabName={"D"} targetWindowId="window-dashboard" />
-                        <TabSource tabName={"E"} targetWindowId="window-dashboard" />
-                        <TabSource tabName={"F"} targetWindowId="window-dashboard" />
-                    </PanelSection>
-
-                    {/* Toggles */}
-                    <Toggle checked={mutable} onCheck={() => setMutable(!mutable)} spanText="Mutable" />
-                    <Toggle checked={showTabs} onCheck={() => setShowTabs(!showTabs)} spanText="Show Tabs" />
-                    <Toggle
-                        checked={showSidebar}
-                        onCheck={() => setShowSidebar(!showSidebar)}
-                        spanText="Show Sidebar"
-                    />
-
-                    {/* Numeric input */}
-                    <NumberStepper label="Max Depth" value={maxDepth} onChange={setMaxDepth} min={1} max={10} />
-
-                    {/* Actions */}
-                    <div style={{display: "flex", gap: 8, marginTop: 2}}>
-                        <AutoArrangeButton />
-                        <Button onClick={handleReset}>Reset Layout</Button>
-                    </div>
-                </FloatingPanel>
-
-                <div style={{position: "relative", height: "100vh", display: "flex"}}>
-                    {showSidebar && (
-                        <div
-                            style={{
-                                width: 240,
-                                flexShrink: 0,
-                                height: "100vh",
-                                backgroundColor: "#1e2030",
-                                borderRight: "1px solid #494d64",
-                                padding: 16,
-                                boxSizing: "border-box",
-                            }}
-                        >
-                            <h3 style={{marginTop: 0}}>Sidebar</h3>
-                            <p>
-                                Toggle me to verify the layout recomputes window geometry as the available container
-                                width changes.
-                            </p>
-                        </div>
-                    )}
-                    <div
-                        style={{
-                            flex: 1,
-                            minWidth: 0,
-                            height: "100vh",
-                            display: "flex",
-                        }}
-                    >
-                        {/* <ResizeTester /> */}
-                        <Layman />
-                    </div>
-                </div>
-            </div>
-        </LaymanProvider>
+        <div style={{color: "#cdd6f4", backgroundColor: "#232634", height: "100vh"}}>
+            <FloatingPanel title="Layman Controls">
+                <Toggle checked={mutable} onCheck={() => setMutable(!mutable)} spanText="Mutable" />
+                <Toggle checked={showTabs} onCheck={() => setShowTabs(!showTabs)} spanText="Show tabs" />
+                <NumberStepper label="Max depth" value={maxDepth} onChange={setMaxDepth} min={1} max={10} />
+                <Button onClick={() => controller.dispatch({type: "layout.autoArrange"})}>Auto arrange</Button>
+            </FloatingPanel>
+            <LaymanView
+                controller={controller}
+                config={{viewId: "demo-workspace", ariaLabel: "Demo workspace", maxDepth, showTabs, interaction: {mutable}}}
+                components={components}
+            />
+        </div>
     );
 }

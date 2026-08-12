@@ -1,6 +1,6 @@
 import {useContext, useEffect, useMemo, useState} from "react";
 import {useDrag, useDragLayer} from "react-dnd";
-import {WindowType} from ".";
+import {WindowType} from "./dndTypes";
 import {LaymanContext} from "./LaymanContext";
 import type {LaymanTab, Position, WindowAddress} from "./types";
 import {isFloatingAddress} from "./utils";

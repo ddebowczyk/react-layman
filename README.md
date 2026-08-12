@@ -27,13 +27,15 @@ Create every tab, window, and split with a stable ID. Tab data must be
 JSON-safe so it can cross a host boundary and persist safely.
 
 ```tsx
+import {useState} from "react";
 import {
     createLaymanNode,
     createLaymanTab,
     createLaymanWindow,
-    Layman,
-    LaymanProvider,
-    type LaymanTab,
+    LaymanView,
+    useLaymanController,
+    type LaymanComponents,
+    type LaymanState,
 } from "react-layman";
 
 const editor = createLaymanTab("Editor", {path: "/workspace/main.ts"}, "tab-editor");
@@ -49,26 +51,32 @@ const initialLayout = createLaymanNode(
 );
 
 export function Workspace() {
-    const renderPane = (tab: LaymanTab) => <section>{tab.title}</section>;
-    const renderTab = (tab: LaymanTab) => tab.title;
+    const [state, setState] = useState<LaymanState>({
+        layout: initialLayout,
+        floatingWindows: [],
+    });
+    const controller = useLaymanController({state, onStateChange: setState});
+    const components: LaymanComponents = {
+        Pane: ({tab}) => <section>{tab.title}</section>,
+        Tab: ({tab}) => <>{tab.title}</>,
+        Empty: () => <button>Create a window</button>,
+    };
 
     return (
-        <LaymanProvider
-            initialLayout={initialLayout}
-            renderPane={renderPane}
-            renderTab={renderTab}
-            renderNull={<button>Create a window</button>}
-            mutable
-        >
-            <div style={{width: 1200, height: 800}}>
-                <Layman />
-            </div>
-        </LaymanProvider>
+        <div style={{width: 1200, height: 800}}>
+            <LaymanView
+                controller={controller}
+                config={{viewId: "workspace", ariaLabel: "Workspace"}}
+                components={components}
+            />
+        </div>
     );
 }
 ```
 
-The Layman container must have a defined width and height.
+The enclosing Layman container must have a defined width and height. This is a
+controlled view: the host owns `state` and receives each applied state through
+`onStateChange`.
 
 ## Layout model
 
@@ -203,24 +211,48 @@ const snapshot = serializeState(state);
 const restored = deserializeState(snapshot);
 ```
 
-## React controls
+## View controller
 
-`LaymanProvider` exposes `layoutDispatch` through `LaymanContext`. It accepts
-the same `LaymanCommand` union as the engine. The current built-in toolbar
-controls can be selected with `toolbarButtons`; the next API layer will make
-each tile control independently configurable.
+`LaymanController` is the one API for a Tauri bridge, a host state store, and
+the React view. It provides setup, command control, state replacement,
+inspection, and transition observation without exposing React context or tree
+paths.
+
+```ts
+const transition = controller.dispatch(
+    {type: "tab.select", tabId: "tab-editor"},
+    {origin: "tauri", requestId: "request-42"}
+);
+
+const currentState = controller.getState();
+const inspection = controller.inspect();
+
+const stopObserving = controller.subscribe((event) => {
+    bridge.emit("layman-transition", event);
+});
+
+controller.replaceState(restoredState, {origin: "restore"});
+stopObserving();
+```
+
+Each transition includes the revision, the prior and next state, changed IDs,
+the command or replacement kind, origin, request ID, and rejection reason.
+`replaceState` rejects invalid state before it reaches the view.
+
+For an isolated local React view, use `defaultState` instead of `state` and
+`onStateChange`:
 
 ```tsx
-<LaymanProvider
-    initialLayout={initialLayout}
-    renderPane={renderPane}
-    renderTab={renderTab}
-    renderNull={<EmptyWorkspace />}
-    toolbarButtons={["splitBottom", "splitRight", "maximize", "float"]}
->
-    <Layman />
-</LaymanProvider>
+const controller = useLaymanController({defaultState: initialState});
 ```
+
+`LaymanView` accepts only a controller, `LaymanViewConfig`, and
+`LaymanComponents`. `components.Pane`, `components.Tab`, and optional
+`components.Empty` receive the tab data, selected state, window ID, controller,
+and command dispatcher. `config.interaction.canExecute` can reject a UI
+command before it changes layout; the controller reports it as `forbidden`.
+The default tile widgets are not part of this API. The next refactor step
+extracts them as configurable components.
 
 ## Theme
 

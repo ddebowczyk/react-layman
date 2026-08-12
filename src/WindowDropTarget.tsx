@@ -1,5 +1,5 @@
 import {useDrop} from "react-dnd";
-import {TabType, WindowType} from ".";
+import {TabType, WindowType} from "./dndTypes";
 import {useContext, useEffect, useRef} from "react";
 import {LaymanContext} from "./LaymanContext";
 import {DragData, Position, WindowAddress} from "./types";

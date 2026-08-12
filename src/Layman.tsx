@@ -11,8 +11,8 @@ import {FloatingDockZones} from "./FloatingDockZones";
 /**
  * Entry point for Layman Window Manager
  */
-export function Layman() {
-    const {globalContainerSize, setGlobalContainerSize, layout, renderNull, draggedWindowTabs, floatingWindows} =
+export function LaymanCanvas() {
+    const {globalContainerSize, setGlobalContainerSize, layout, renderNull, draggedWindowTabs, floatingWindows, viewId, ariaLabel} =
         useContext(LaymanContext);
     // Reference for parent div
     const laymanRef = useRef<HTMLDivElement | null>(null);
@@ -268,9 +268,9 @@ export function Layman() {
     }, [globalContainerSize, draggedWindowTabs, layout, floatingWindows]);
 
     return (
-        <div ref={laymanRef} className="layman-root">
+        <div ref={laymanRef} id={viewId} className="layman-root" role="application" aria-label={ariaLabel}>
             {/* Shown behind any floating windows when the tree is empty. */}
-            {!layout && renderNull}
+            {!layout && renderNull()}
             {toolbars.map((props) => (
                 <WindowToolbar key={addressKey(props.path)} {...props} />
             ))}

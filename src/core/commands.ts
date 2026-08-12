@@ -26,6 +26,7 @@ export type LaymanRejectionReason =
     | "invalid-placement"
     | "invalid-position"
     | "invalid-size"
+    | "forbidden"
     | "duplicate-id";
 
 export type LaymanChange =

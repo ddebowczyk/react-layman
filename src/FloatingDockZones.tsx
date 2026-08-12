@@ -1,6 +1,6 @@
 import {useContext} from "react";
 import {useDragLayer, useDrop} from "react-dnd";
-import {WindowType} from ".";
+import {WindowType} from "./dndTypes";
 import {LaymanContext} from "./LaymanContext";
 import {findWindowRectAtPoint} from "./layoutGeometry";
 import {DragData, Position} from "./types";

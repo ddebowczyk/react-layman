@@ -1,25 +1,35 @@
-import {createLaymanNode, createLaymanTab, createLaymanWindow} from "../src";
+import {createLaymanNode, createLaymanTab, createLaymanWindow, type LaymanLayout} from "../src";
+import type {ModuleDescriptor} from "./modules";
 
-export const initialLayout = createLaymanNode(
+export const initialLayout: LaymanLayout<ModuleDescriptor> = createLaymanNode(
     "row",
     [
         createLaymanNode(
             "column",
             [
                 createLaymanWindow(
-                    [createLaymanTab("Home", {icon: "home-icon"}, "tab-home"), createLaymanTab("Settings", {icon: "settings-icon"}, "tab-settings")],
+                    [
+                        createLaymanTab<ModuleDescriptor>("Home", {kind: "dashboard", moduleId: "home"}, "tab-home"),
+                        createLaymanTab<ModuleDescriptor>("Settings", {kind: "settings", moduleId: "settings"}, "tab-settings"),
+                    ],
                     "window-home",
                     "tab-home"
                 ),
                 createLaymanWindow(
-                    [createLaymanTab("Profile", {icon: "profile-icon"}, "tab-profile"), createLaymanTab("Messages", {icon: "messages-icon"}, "tab-messages")],
+                    [
+                        createLaymanTab<ModuleDescriptor>("Profile", {kind: "profile", moduleId: "profile"}, "tab-profile"),
+                        createLaymanTab<ModuleDescriptor>("Messages", {kind: "editor", moduleId: "messages"}, "tab-messages"),
+                    ],
                     "window-profile",
                     "tab-messages"
                 ),
             ],
             "split-left"
         ),
-        createLaymanWindow([createLaymanTab("Dashboard", {icon: "dashboard-icon"}, "tab-dashboard")], "window-dashboard"),
+        createLaymanWindow(
+            [createLaymanTab<ModuleDescriptor>("Dashboard", {kind: "dashboard", moduleId: "dashboard"}, "tab-dashboard")],
+            "window-dashboard"
+        ),
     ],
     "split-root"
 );

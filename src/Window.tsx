@@ -2,7 +2,6 @@ import {useContext, useEffect, useState} from "react";
 import {LaymanContext} from "./LaymanContext";
 import {useDragLayer} from "react-dnd";
 import {createPortal} from "react-dom";
-import {WindowContext} from "./WindowContext";
 import {Position, WindowProps} from "./types";
 import {deepEqual, isFloatingAddress} from "./utils";
 
@@ -15,6 +14,7 @@ export function Window({windowId, position: rawPosition, path, tab, isSelected, 
         maximizedPath,
         showTabs,
         layoutDispatch,
+        viewId,
     } = useContext(LaymanContext);
 
     const isFloating = isFloatingAddress(path);
@@ -77,13 +77,13 @@ export function Window({windowId, position: rawPosition, path, tab, isSelected, 
 
     // Check for the portal target element when the component mounts
     useEffect(() => {
-        const element = document.getElementById("drag-window-border");
+        const element = document.getElementById(`${viewId}-drag-window-border`);
         if (element) {
             setPortalElement(element);
         } else {
             console.error("Element with id 'drag-window-border' not found.");
         }
-    }, []);
+    }, [viewId]);
 
     if (!portalElement) {
         return null; // Don't render until portal element is available
@@ -142,19 +142,9 @@ export function Window({windowId, position: rawPosition, path, tab, isSelected, 
                             userSelect: "none",
                         }}
                     ></div>,
-                    document.getElementById("drag-window-border")!
+                    document.getElementById(`${viewId}-drag-window-border`)!
                 )}
-            <WindowContext.Provider
-                value={{
-                    windowId,
-                    position,
-                    path,
-                    tab,
-                    isSelected,
-                }}
-            >
-                {renderPane(tab)}
-            </WindowContext.Provider>
+            {renderPane(tab, windowId, isSelected)}
         </div>
     );
 }

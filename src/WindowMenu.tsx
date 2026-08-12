@@ -66,7 +66,7 @@ export function WindowMenu({windowId, position, tabs, selectedTabId, open, setOp
                                         setOpen(false);
                                     }}
                                 >
-                                    {renderTab(tab)}
+                                    {renderTab(tab, windowId, tab.id === selectedTabId)}
                                 </button>
                                 {mutable && (
                                     <button
