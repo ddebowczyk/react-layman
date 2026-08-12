@@ -16,7 +16,7 @@ interface UseWindowDragOptions {
 /** Coordinates the two drag handles that can move one window. */
 export function useWindowDrag({windowId, path, position, tabs, selectedTabId}: UseWindowDragOptions) {
     const {canExecute, layoutDispatch, setGlobalDragging, setWindowDragStartPosition, setDraggedWindowTabs} = useContext(LaymanContext);
-    const [currentMousePosition, setCurrentMousePosition] = useState({top: position.top, left: position.left});
+    const [currentMousePosition, setCurrentMousePosition] = useState({top: 0, left: 0});
     const [dragStartPosition, setDragStartPosition] = useState({x: 0, y: 0});
     const emptyImage = useMemo(() => {
         const image = new Image();

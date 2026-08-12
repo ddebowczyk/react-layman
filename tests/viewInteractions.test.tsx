@@ -114,6 +114,34 @@ describe("Layman view interactions", () => {
         expect(screen.queryByRole("button", {name: "Close window"})).toBeNull();
     });
 
+    it("uses layout coordinates until a window drag begins", () => {
+        const {root} = renderLaymanView({
+            state: {
+                layout: {
+                    id: "split-main",
+                    direction: "row",
+                    children: [
+                        window("window-left", tab("Left", {}, "tab-left")),
+                        window("window-right", tab("Right", {}, "tab-right")),
+                    ],
+                },
+                floatingWindows: [
+                    {
+                        ...floatingWindow("window-floating", tab("Floating", {}, "tab-floating")),
+                        position: {top: 12, left: 24, width: 300, height: 200},
+                    },
+                ],
+            },
+        });
+
+        const rightToolbar = root.querySelector<HTMLElement>('[data-layman-component="toolbar"][data-layman-window="window-right"]');
+        const floatingToolbar = root.querySelector<HTMLElement>('[data-layman-component="toolbar"][data-layman-window="window-floating"]');
+
+        expect(rightToolbar?.style.left).toBe("400px");
+        expect(floatingToolbar?.style.left).toBe("24px");
+        expect(floatingToolbar?.style.top).toBe("12px");
+    });
+
     it("maximizes and restores a tiled window", async () => {
         const left = window("window-left", tab("Left", {}, "tab-left"));
         const right = window("window-right", tab("Right", {}, "tab-right"));
