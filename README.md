@@ -78,6 +78,81 @@ The enclosing Layman container must have a defined width and height. This is a
 controlled view: the host owns `state` and receives each applied state through
 `onStateChange`.
 
+## Window toolbar
+
+`config.toolbar` defines the complete set of tile-frame controls. When it is
+present, Layman adds no create, split, maximize, float, close, or overflow
+controls of its own. The declared item order is preserved on the toolbar,
+overflow menu, and compact menu.
+
+```tsx
+import {createLaymanTab, type LaymanToolbarConfig} from "react-layman";
+
+const toolbar: LaymanToolbarConfig<{path: string}> = {
+    createTab: () => createLaymanTab("New editor", {path: "/workspace/new.ts"}),
+    items: [
+        {kind: "builtin", id: "new", action: "tab.create", placement: "bar"},
+        {
+            kind: "builtin",
+            id: "split-right",
+            action: "window.split.right",
+            placement: "overflow",
+        },
+        {
+            kind: "builtin",
+            id: "maximize",
+            action: "window.maximize",
+            placement: "bar",
+        },
+        {kind: "builtin", id: "float", action: "window.float", placement: "bar"},
+        {kind: "builtin", id: "close", action: "window.close", placement: "bar"},
+        {
+            kind: "custom",
+            id: "module-count",
+            placement: "overflow",
+            render: ({context}) => <output>{context.window.tabs.length} modules</output>,
+        },
+    ],
+    overflow: "auto",
+};
+
+<LaymanView
+    controller={controller}
+    components={components}
+    config={{viewId: "workspace", toolbar}}
+/>;
+```
+
+Built-in actions are `tab.create`, four `window.split.*` directions,
+`window.maximize`, `window.float`, and `window.close`. A create or split
+action is disabled unless `createTab` is supplied; Layman never creates a tab
+with invented data. Split items are hidden at the configured maximum depth.
+
+Each item can supply `render(props)` to replace the default button. Its props
+contain the stable window identity, selected tab, tiled or floating location,
+current inspection, active and disabled state, and an `invoke()` function for
+the built-in operation. A custom item also receives
+`context.dispatch(command)` for its own typed semantic command. It never
+receives a tree path or React context setter.
+
+```tsx
+{
+    kind: "builtin",
+    id: "close-with-confirmation",
+    action: "window.close",
+    render: ({state, invoke}) => (
+        <button
+            disabled={state.disabled}
+            onClick={() => confirm("Close window?") && invoke()}
+        >
+            {state.label}
+        </button>
+    ),
+}
+```
+
+Omit `toolbar` to use the conservative default: maximize, float, and close.
+
 ## Layout model
 
 The model has three durable entity types:
@@ -251,8 +326,6 @@ const controller = useLaymanController({defaultState: initialState});
 `components.Empty` receive the tab data, selected state, window ID, controller,
 and command dispatcher. `config.interaction.canExecute` can reject a UI
 command before it changes layout; the controller reports it as `forbidden`.
-The default tile widgets are not part of this API. The next refactor step
-extracts them as configurable components.
 
 ## Theme
 

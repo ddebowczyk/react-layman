@@ -189,6 +189,10 @@
             cursor: pointer;
             background-color: var(--toolbar-button-hover-bg-color, #292524);
         }
+        &:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
     }
 
     .toolbar-button-container {
@@ -196,6 +200,23 @@
         /* position: absolute;
         right: 0; */
         border-top-right-radius: var(--border-radius, 8px);
+    }
+
+    .layman-toolbar-overflow {
+        position: relative;
+        display: flex;
+        .layman-toolbar-overflow-popover {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            display: flex;
+            min-width: max-content;
+            background-color: var(--toolbar-bg-color, #1c1917);
+            color: var(--tab-text-color, #ffffff);
+            border-radius: var(--border-radius, 8px);
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
     }
 
     /* Floating windows render with the exact same markup/classes as tiled

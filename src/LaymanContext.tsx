@@ -3,21 +3,25 @@ import {DndProvider} from "react-dnd";
 import {HTML5Backend} from "react-dnd-html5-backend";
 import {DropHighlight} from "./DropHighlight";
 import type {LaymanCommand} from "./core/commands";
+import type {LaymanInspection} from "./core/inspection";
+import type {LaymanControllerTransition} from "./controller/types";
+import {defaultLaymanToolbar} from "./toolbar/defaults";
+import type {LaymanToolbarConfig} from "./toolbar/types";
 import {
     LaymanContextType,
     LaymanState,
     PaneRenderer,
     Position,
     TabRenderer,
-    ToolbarButtonType,
-    WindowAddress,
 } from "./types";
 
 const defaultContextValue: LaymanContextType = {
     globalContainerSize: {top: 0, left: 0, width: 0, height: 0},
     setGlobalContainerSize: () => {},
     layout: undefined,
-    layoutDispatch: () => {},
+    layoutDispatch: () => {
+        throw new Error("[Layman] a view controller is required");
+    },
     setDropHighlightPosition: () => {},
     globalDragging: false,
     setGlobalDragging: () => {},
@@ -28,10 +32,11 @@ const defaultContextValue: LaymanContextType = {
     renderPane: () => <></>,
     renderTab: () => <></>,
     mutable: true,
-    toolbarButtons: [],
+    toolbar: defaultLaymanToolbar,
+    inspection: {rootId: null, windows: [], splits: []},
     renderNull: () => <></>,
-    maximizedPath: null,
-    setMaximizedPath: () => {},
+    maximizedWindowId: null,
+    setMaximizedWindowId: () => {},
     floatingWindows: [],
     maxDepth: Infinity,
     showTabs: true,
@@ -41,23 +46,24 @@ const defaultContextValue: LaymanContextType = {
 
 interface LaymanRuntimeProps {
     state: LaymanState;
-    dispatch(command: LaymanCommand): void;
+    inspection: LaymanInspection;
+    dispatch(command: LaymanCommand): LaymanControllerTransition;
     renderPane: PaneRenderer;
     renderTab: TabRenderer;
     renderNull: () => JSX.Element;
     mutable: boolean;
     maxDepth: number;
     showTabs: boolean;
+    toolbar?: LaymanToolbarConfig;
     viewId: string;
     ariaLabel?: string;
     children: React.ReactNode;
 }
 
-const defaultToolbarButtons: readonly ToolbarButtonType[] = ["splitBottom", "splitRight", "maximize", "float", "close"];
-
 /** Internal React runtime. Public hosts use LaymanView. */
 export const LaymanRuntime = ({
     state,
+    inspection,
     dispatch,
     renderPane,
     renderTab,
@@ -65,6 +71,7 @@ export const LaymanRuntime = ({
     mutable,
     maxDepth,
     showTabs,
+    toolbar = defaultLaymanToolbar,
     viewId,
     ariaLabel,
     children,
@@ -74,7 +81,7 @@ export const LaymanRuntime = ({
     const [draggedWindowTabs, setDraggedWindowTabs] = useState<LaymanContextType["draggedWindowTabs"]>([]);
     const [windowDragStartPosition, setWindowDragStartPosition] = useState({x: 0, y: 0});
     const [globalDragging, setGlobalDragging] = useState(false);
-    const [maximizedPath, setMaximizedPath] = useState<WindowAddress | null>(null);
+    const [maximizedWindowId, setMaximizedWindowId] = useState<string | null>(null);
 
     return (
         <LaymanContext.Provider
@@ -82,9 +89,7 @@ export const LaymanRuntime = ({
                 globalContainerSize,
                 setGlobalContainerSize,
                 layout: state.layout,
-                layoutDispatch: (command) => {
-                    dispatch(command);
-                },
+                layoutDispatch: dispatch,
                 setDropHighlightPosition,
                 globalDragging,
                 setGlobalDragging,
@@ -95,10 +100,11 @@ export const LaymanRuntime = ({
                 renderPane,
                 renderTab,
                 mutable,
-                toolbarButtons: defaultToolbarButtons,
+                toolbar,
+                inspection,
                 renderNull,
-                maximizedPath,
-                setMaximizedPath,
+                maximizedWindowId,
+                setMaximizedWindowId,
                 floatingWindows: state.floatingWindows,
                 maxDepth,
                 showTabs,

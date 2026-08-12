@@ -1,5 +1,6 @@
 import type {Dispatch, SetStateAction} from "react";
 import type {LaymanCommand} from "./core/commands";
+import type {LaymanInspection} from "./core/inspection";
 import type {
     FloatingWindowData,
     JsonValue,
@@ -8,6 +9,8 @@ import type {
     LaymanTab,
     Position,
 } from "./core/model";
+import type {LaymanControllerTransition} from "./controller/types";
+import type {LaymanToolbarConfig} from "./toolbar/types";
 
 export type {
     FloatingWindowData,
@@ -79,23 +82,11 @@ export interface WindowProps {
 export type PaneRenderer = (tab: LaymanTab, windowId: string, selected: boolean) => JSX.Element;
 export type TabRenderer = (tab: LaymanTab, windowId: string, selected: boolean) => string | JSX.Element;
 
-export type ToolbarButtonType =
-    | "splitLeft"
-    | "splitRight"
-    | "splitTop"
-    | "splitBottom"
-    | "maximize"
-    | "minimize"
-    | "float"
-    | "unfloat"
-    | "close"
-    | "misc";
-
 export interface LaymanContextType {
     globalContainerSize: Position;
     setGlobalContainerSize: Dispatch<SetStateAction<Position>>;
     layout: LaymanLayout;
-    layoutDispatch: Dispatch<LaymanCommand>;
+    layoutDispatch: (command: LaymanCommand) => LaymanControllerTransition;
     setDropHighlightPosition: Dispatch<Position>;
     globalDragging: boolean;
     setGlobalDragging: Dispatch<boolean>;
@@ -106,10 +97,11 @@ export interface LaymanContextType {
     renderPane: PaneRenderer;
     renderTab: TabRenderer;
     mutable: boolean;
-    toolbarButtons?: readonly ToolbarButtonType[];
+    toolbar: LaymanToolbarConfig;
+    inspection: LaymanInspection;
     renderNull: () => JSX.Element;
-    maximizedPath: WindowAddress | null;
-    setMaximizedPath: Dispatch<SetStateAction<WindowAddress | null>>;
+    maximizedWindowId: string | null;
+    setMaximizedWindowId: Dispatch<SetStateAction<string | null>>;
     floatingWindows: readonly FloatingWindowData[];
     maxDepth: number;
     showTabs: boolean;

@@ -3,7 +3,7 @@ import {LaymanContext} from "./LaymanContext";
 import {useDragLayer} from "react-dnd";
 import {createPortal} from "react-dom";
 import {Position, WindowProps} from "./types";
-import {deepEqual, isFloatingAddress} from "./utils";
+import {isFloatingAddress} from "./utils";
 
 export function Window({windowId, position: rawPosition, path, tab, isSelected, zIndex: floatingZIndex}: WindowProps) {
     const {
@@ -11,7 +11,7 @@ export function Window({windowId, position: rawPosition, path, tab, isSelected, 
         renderPane,
         draggedWindowTabs,
         windowDragStartPosition,
-        maximizedPath,
+        maximizedWindowId,
         showTabs,
         layoutDispatch,
         viewId,
@@ -31,7 +31,7 @@ export function Window({windowId, position: rawPosition, path, tab, isSelected, 
         : 0;
 
     // A maximized window overrides its layout position to fill the whole container.
-    const isMaximized = maximizedPath !== null && deepEqual(maximizedPath, path);
+    const isMaximized = maximizedWindowId === windowId;
     const position: Position = isMaximized
         ? {top: 0, left: 0, width: globalContainerSize.width, height: globalContainerSize.height}
         : rawPosition;

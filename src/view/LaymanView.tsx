@@ -3,8 +3,9 @@ import type {LaymanCommand} from "../core/commands";
 import type {JsonValue, LaymanState, LaymanTab} from "../core/model";
 import {LaymanRuntime} from "../LaymanContext";
 import {LaymanCanvas} from "../Layman";
-import type {LaymanController} from "../controller/types";
-import type {LaymanCommandDispatcher, LaymanComponents, LaymanViewConfig} from "./types";
+import type {LaymanCommandDispatcher, LaymanController} from "../controller/types";
+import type {LaymanToolbarConfig} from "../toolbar/types";
+import type {LaymanComponents, LaymanViewConfig} from "./types";
 
 export interface LaymanViewProps<TData extends JsonValue> {
     controller: LaymanController<TData>;
@@ -23,6 +24,7 @@ function useControllerState<TData extends JsonValue>(controller: LaymanControlle
 /** Renders a controlled Layman workspace through the public controller contract. */
 export function LaymanView<TData extends JsonValue>({controller, config, components}: LaymanViewProps<TData>) {
     const state = useControllerState(controller);
+    const inspection = controller.inspect();
     const {Pane, Tab, Empty} = components;
     const dispatch: LaymanCommandDispatcher<TData> = (command) => {
         return controller.dispatch(command, {
@@ -34,9 +36,8 @@ export function LaymanView<TData extends JsonValue>({controller, config, compone
     return (
         <LaymanRuntime
             state={state as LaymanState}
-            dispatch={(command) => {
-                dispatch(command as LaymanCommand<TData>);
-            }}
+            inspection={inspection}
+            dispatch={(command) => dispatch(command as LaymanCommand<TData>)}
             renderPane={(tab, windowId, selected) => (
                 <Pane
                     tab={tab as LaymanTab<TData>}
@@ -61,6 +62,7 @@ export function LaymanView<TData extends JsonValue>({controller, config, compone
             mutable={config.interaction?.mutable ?? true}
             maxDepth={config.maxDepth ?? Infinity}
             showTabs={config.showTabs ?? true}
+            toolbar={config.toolbar as LaymanToolbarConfig | undefined}
             viewId={config.viewId}
             ariaLabel={config.ariaLabel}
         >

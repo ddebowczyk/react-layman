@@ -1,7 +1,6 @@
 export {LaymanView} from "./LaymanView";
 export type {LaymanViewProps} from "./LaymanView";
 export type {
-    LaymanCommandDispatcher,
     LaymanComponents,
     LaymanEmptyProps,
     LaymanInteractionPolicy,

@@ -1,11 +1,8 @@
 import type {ComponentType} from "react";
 import type {LaymanCommand} from "../core/commands";
 import type {JsonValue, LaymanTab} from "../core/model";
-import type {LaymanController, LaymanControllerTransition} from "../controller/types";
-
-export type LaymanCommandDispatcher<TData extends JsonValue> = (
-    command: LaymanCommand<TData>
-) => LaymanControllerTransition<TData>;
+import type {LaymanCommandDispatcher, LaymanController} from "../controller/types";
+import type {LaymanToolbarConfig} from "../toolbar/types";
 
 interface LaymanSlotBase<TData extends JsonValue> {
     controller: LaymanController<TData>;
@@ -37,6 +34,7 @@ export interface LaymanViewConfig<TData extends JsonValue> {
     maxDepth?: number;
     showTabs?: boolean;
     interaction?: LaymanInteractionPolicy<TData>;
+    toolbar?: LaymanToolbarConfig<TData>;
 }
 
 export interface LaymanComponents<TData extends JsonValue> {

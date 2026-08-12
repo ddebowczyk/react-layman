@@ -35,6 +35,8 @@ export {createLaymanNode, createLaymanTab, createLaymanWindow} from "./createLay
 
 export {createLaymanController, useLaymanController} from "./controller";
 export type {
+    LaymanCommandDispatcher,
+    LaymanControllerDispatch,
     LaymanCommandMeta,
     LaymanCommandOrigin,
     LaymanController,
@@ -46,7 +48,6 @@ export type {
 
 export {LaymanView} from "./view";
 export type {
-    LaymanCommandDispatcher,
     LaymanComponents,
     LaymanEmptyProps,
     LaymanInteractionPolicy,
@@ -55,6 +56,24 @@ export type {
     LaymanViewConfig,
     LaymanViewProps,
 } from "./view";
+
+export {LaymanToolbarButton} from "./toolbar/LaymanToolbarButton";
+export type {
+    LaymanBuiltinToolbarAction,
+    LaymanBuiltinToolbarItem,
+    LaymanCustomToolbarItem,
+    LaymanToolbarActionResult,
+    LaymanToolbarConfig,
+    LaymanToolbarContext,
+    LaymanToolbarItem,
+    LaymanToolbarItemState,
+    LaymanToolbarItemsResolver,
+    LaymanToolbarLocation,
+    LaymanToolbarPlacement,
+    LaymanToolbarSurface,
+    LaymanToolbarWidgetProps,
+    LaymanToolbarWindow,
+} from "./toolbar/types";
 
 export type {
     LaymanSchemaVersion,

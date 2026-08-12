@@ -26,8 +26,17 @@ export type LaymanTransitionListener<TData extends JsonValue = JsonValue> = (
     transition: LaymanControllerTransition<TData>
 ) => void;
 
+export type LaymanCommandDispatcher<TData extends JsonValue = JsonValue> = (
+    command: LaymanCommand<TData>
+) => LaymanControllerTransition<TData>;
+
+export type LaymanControllerDispatch<TData extends JsonValue = JsonValue> = (
+    command: LaymanCommand<TData>,
+    meta?: LaymanCommandMeta
+) => LaymanControllerTransition<TData>;
+
 export interface LaymanController<TData extends JsonValue = JsonValue> {
-    dispatch(command: LaymanCommand<TData>, meta?: LaymanCommandMeta): LaymanControllerTransition<TData>;
+    dispatch: LaymanControllerDispatch<TData>;
     replaceState(state: LaymanState<TData>, meta?: LaymanCommandMeta): LaymanControllerTransition<TData>;
     getState(): Readonly<LaymanState<TData>>;
     inspect(): LaymanInspection<TData>;

@@ -1,8 +1,7 @@
 import {useContext} from "react";
 import {LaymanContext} from "./LaymanContext";
 import {ToolbarButton} from "./ToolbarButton";
-import {AddIcon, CloseIcon, EllipsisIcon} from "./Icons";
-import {createLaymanTab} from "./createLaymanTab";
+import {CloseIcon, EllipsisIcon} from "./Icons";
 import {LaymanTab, Position} from "./types";
 
 interface WindowMenuProps {
@@ -12,17 +11,15 @@ interface WindowMenuProps {
     selectedTabId: string | null;
     open: boolean;
     setOpen: (open: boolean) => void;
-    // Pre-rendered window control buttons (maximize/float/close/etc.).
-    controlButtons: React.ReactNode;
+    controls: React.ReactNode;
 }
 
 /**
  * Compact window controls used when `showTabs` is false. Renders a single
- * square ellipsis button in the window's top-right corner; clicking it opens a
- * popover that exposes tab selection, adding tabs, and the window control
- * buttons that would otherwise live in the toolbar.
+ * square ellipsis button in the window's top-right corner. The supplied
+ * toolbar configuration defines the entire control set in its popover.
  */
-export function WindowMenu({windowId, position, tabs, selectedTabId, open, setOpen, controlButtons}: WindowMenuProps) {
+export function WindowMenu({windowId, position, tabs, selectedTabId, open, setOpen, controls}: WindowMenuProps) {
     const {layoutDispatch, renderTab, mutable} = useContext(LaymanContext);
 
     // parseInt returns NaN (not null/undefined) when the CSS variable is missing,
@@ -79,18 +76,7 @@ export function WindowMenu({windowId, position, tabs, selectedTabId, open, setOp
                             </div>
                         ))}
                     </div>
-                    <div className="layman-window-menu-controls">
-                        <ToolbarButton
-                            onClick={() => {
-                                const newTab = createLaymanTab("blank", {});
-                                layoutDispatch({type: "tab.insert", tab: newTab, target: {kind: "window", windowId}, placement: "center"});
-                                layoutDispatch({type: "tab.select", tabId: newTab.id});
-                            }}
-                        >
-                            <AddIcon />
-                        </ToolbarButton>
-                        {controlButtons}
-                    </div>
+                    <div className="layman-window-menu-controls">{controls}</div>
                 </div>
             )}
         </div>
