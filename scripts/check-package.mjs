@@ -10,7 +10,10 @@ function fail(message) {
 }
 
 function pack() {
-    const output = execFileSync("npm", ["pack", "--dry-run", "--json"], {cwd: root, encoding: "utf8"});
+    // `prepare` builds Git source installs. It writes build output to stdout,
+    // so this metadata check must not execute lifecycle scripts before it
+    // parses npm's JSON response.
+    const output = execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {cwd: root, encoding: "utf8"});
     const result = JSON.parse(output);
     if (!Array.isArray(result) || result.length !== 1 || !Array.isArray(result[0]?.files)) {
         fail("npm pack did not report exactly one package file list");
@@ -20,6 +23,7 @@ function pack() {
 
 if (packageJson.exports?.["."]?.types !== "./lib/index.d.ts") fail("root declaration export is missing");
 if (packageJson.exports?.["./styles.css"] !== "./lib/index.css") fail("stylesheet export is missing");
+if (packageJson.scripts?.prepare !== "npm run build:lib") fail("Git source installs must build the library through prepare");
 for (const [name, range] of Object.entries({react: "^19.0.0", "react-dom": "^19.0.0"})) {
     if (packageJson.peerDependencies?.[name] !== range) fail(`${name} peer dependency must be ${range}`);
 }
