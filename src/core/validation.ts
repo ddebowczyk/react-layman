@@ -1,4 +1,4 @@
-import type {JsonValue, LaymanState, LaymanTree} from "./model";
+import type {JsonValue, LaymanState, LaymanTree, Position} from "./model";
 
 export type LaymanValidationIssue =
     | "duplicate-tab-id"
@@ -34,8 +34,9 @@ function isId(value: string): boolean {
     return value.trim().length > 0;
 }
 
-function isFinitePosition(value: {top: number; left: number; width: number; height: number}): boolean {
-    return [value.top, value.left, value.width, value.height].every(Number.isFinite);
+/** A floating panel needs finite coordinates and a positive visible area. */
+export function isValidFloatingPosition(value: Position): boolean {
+    return [value.top, value.left, value.width, value.height].every(Number.isFinite) && value.width > 0 && value.height > 0;
 }
 
 /** Validates the complete state graph without changing it. */
@@ -96,7 +97,7 @@ export function validateLaymanState<TData extends JsonValue>(state: LaymanState<
         if ((window.tabs.length === 0 && window.selectedTabId !== null) || (window.tabs.length > 0 && !localIds.has(window.selectedTabId ?? ""))) {
             issues.add("invalid-selection");
         }
-        if (!isFinitePosition(window.position)) issues.add("invalid-position");
+        if (!isValidFloatingPosition(window.position)) issues.add("invalid-position");
         if (!Number.isFinite(window.zIndex)) issues.add("invalid-z-index");
     }
     return {valid: issues.size === 0, issues: [...issues]};

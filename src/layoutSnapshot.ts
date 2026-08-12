@@ -11,6 +11,7 @@ import {
     LaymanTree,
     Position,
 } from "./types";
+import {isValidFloatingPosition} from "./core/validation";
 
 export const LAYMAN_SNAPSHOT_VERSION = 2 as const;
 
@@ -125,9 +126,12 @@ export function serializeState(state: LaymanState): LaymanSerializedState {
 function validatePosition(value: unknown, label: string): asserts value is Position {
     if (!isRecord(value)) fail(`${label} position is required`);
     rejectUnknownKeys(value, ["top", "left", "width", "height"], `${label} position`);
-    for (const key of ["top", "left", "width", "height"] as const) {
-        if (typeof value[key] !== "number" || !Number.isFinite(value[key])) fail(`${label} position.${key} must be finite`);
-    }
+    const {top, left, width, height} = value;
+    if (typeof top !== "number" || !Number.isFinite(top)) fail(`${label} position.top must be finite`);
+    if (typeof left !== "number" || !Number.isFinite(left)) fail(`${label} position.left must be finite`);
+    if (typeof width !== "number" || !Number.isFinite(width)) fail(`${label} position.width must be finite`);
+    if (typeof height !== "number" || !Number.isFinite(height)) fail(`${label} position.height must be finite`);
+    if (!isValidFloatingPosition({top, left, width, height})) fail(`${label} position width and height must be greater than zero`);
 }
 
 function validateTab(value: unknown, tabIds: Set<string>): asserts value is LaymanSerializedTab {

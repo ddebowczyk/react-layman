@@ -2,7 +2,7 @@ import type {LaymanChange, LaymanCommand, LaymanRejectionReason, LaymanTransitio
 import {findNode, findTabWindow, findWindow} from "./indexing";
 import type {FloatingWindowData, JsonValue, LaymanPlacement, LaymanState, LaymanTab, LaymanWindow, Position} from "./model";
 import {autoArrangeTree, createWindowId, insertTreeWindow, removeTreeWindow, replaceTreeAtPath, updateTreeWindow} from "./tree";
-import {isJsonValue, validateLaymanState} from "./validation";
+import {isJsonValue, isValidFloatingPosition, validateLaymanState} from "./validation";
 
 function rejected<TData extends JsonValue>(
     previous: LaymanState<TData>,
@@ -19,10 +19,6 @@ function completed<TData extends JsonValue>(
     changes: readonly LaymanChange[]
 ): LaymanTransition<TData> {
     return {command, status: next === previous ? "noop" : "applied", previous, next, changes: next === previous ? [] : changes};
-}
-
-function isFinitePosition(position: Position): boolean {
-    return [position.top, position.left, position.width, position.height].every(Number.isFinite);
 }
 
 function isId(value: string): boolean {
@@ -198,7 +194,7 @@ function windowMove<TData extends JsonValue>(state: LaymanState<TData>, command:
     if (command.target.kind === "floating") {
         if (command.placement !== "center") return rejected(state, command, "invalid-placement");
         if (source.kind === "floating") return completed(state, command, state, []);
-        if (!isFinitePosition(command.target.position)) return rejected(state, command, "invalid-position");
+        if (!isValidFloatingPosition(command.target.position)) return rejected(state, command, "invalid-position");
         const withoutSource = removeWindow(state, source.window.id);
         const next = {
             ...withoutSource,
@@ -260,7 +256,7 @@ function splitResize<TData extends JsonValue>(state: LaymanState<TData>, command
 function floatingPosition<TData extends JsonValue>(state: LaymanState<TData>, command: Extract<LaymanCommand<TData>, {type: "floating.position"}>): LaymanTransition<TData> {
     const location = findWindow(state, command.windowId);
     if (!location || location.kind !== "floating") return rejected(state, command, "unknown-window");
-    if (!isFinitePosition(command.position)) return rejected(state, command, "invalid-position");
+    if (!isValidFloatingPosition(command.position)) return rejected(state, command, "invalid-position");
     if (samePosition(location.window.position, command.position)) return completed(state, command, state, []);
     const next = {...state, floatingWindows: state.floatingWindows.map((window) => (window.id === command.windowId ? {...window, position: command.position} : window))};
     return completed(state, command, next, [{kind: "floating-window", id: command.windowId}]);

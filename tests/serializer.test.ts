@@ -76,6 +76,21 @@ describe("versioned state snapshots", () => {
         expect(() => deserializeState({schemaVersion: 1, layout: null, floatingWindows: []})).toThrow("schemaVersion");
         expect(() => deserializeTab({id: "tab", name: "old", data: {}} as never)).toThrow("title");
         expect(() => deserializeState({schemaVersion: 2, layout: null, floatingWindows: [], extra: true})).toThrow("unknown property");
+        expect(() =>
+            deserializeState({
+                schemaVersion: 2,
+                layout: null,
+                floatingWindows: [
+                    {
+                        id: "window-zero-width",
+                        tabs: [],
+                        selectedTabId: null,
+                        position: {top: 0, left: 0, width: 0, height: 100},
+                        zIndex: 30,
+                    },
+                ],
+            })
+        ).toThrow("width and height must be greater than zero");
 
         const snapshot: LaymanSerializedState = {
             schemaVersion: 2,

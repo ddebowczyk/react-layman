@@ -152,16 +152,29 @@ describe("semantic layout commands", () => {
         expect((docked.next.layout as LaymanWindow).tabs).toEqual([...((state.layout as LaymanNode).children[1] as LaymanWindow).tabs, ...leftWindow.tabs]);
     });
 
-    it("rejects invalid floating geometry atomically", () => {
-        const state: LaymanState = {layout: undefined, floatingWindows: [floatingWindow("window-float", tab("Float", {}, "tab-float"))]};
-        const transition = applyLaymanCommand(state, {
-            type: "floating.position",
-            windowId: "window-float",
-            position: {top: Infinity, left: 0, width: 200, height: 100},
-        });
+    it("rejects non-finite or non-positive floating geometry atomically", () => {
+        const floating = {layout: undefined, floatingWindows: [floatingWindow("window-float", tab("Float", {}, "tab-float"))]} satisfies LaymanState;
+        const tiled = {layout: window("window-main", tab("Main", {}, "tab-main")), floatingWindows: []} satisfies LaymanState;
+        const invalidPositions = [
+            {top: Infinity, left: 0, width: 200, height: 100},
+            {top: 0, left: 0, width: 0, height: 100},
+            {top: 0, left: 0, width: 200, height: -1},
+        ];
 
-        expect(transition).toMatchObject({status: "rejected", reason: "invalid-position"});
-        expect(transition.next).toBe(state);
+        for (const position of invalidPositions) {
+            const repositioned = applyLaymanCommand(floating, {type: "floating.position", windowId: "window-float", position});
+            const floated = applyLaymanCommand(tiled, {
+                type: "window.move",
+                windowId: "window-main",
+                target: {kind: "floating", position},
+                placement: "center",
+            });
+
+            expect(repositioned).toMatchObject({status: "rejected", reason: "invalid-position"});
+            expect(repositioned.next).toBe(floating);
+            expect(floated).toMatchObject({status: "rejected", reason: "invalid-position"});
+            expect(floated.next).toBe(tiled);
+        }
     });
 
     it("focuses and closes floating windows through explicit commands", () => {
