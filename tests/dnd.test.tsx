@@ -8,6 +8,7 @@ import {TestBackend, type ITestBackend} from "react-dnd-test-backend";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import {LaymanRuntime} from "../src/LaymanContext";
 import {WindowDropTarget} from "../src/WindowDropTarget";
+import {FloatingDockZones} from "../src/FloatingDockZones";
 import {createLaymanController} from "../src/controller";
 import {LaymanDndProvider} from "../src/dnd/LaymanDndProvider";
 import {tabDragType, windowDragType} from "../src/dnd/items";
@@ -24,6 +25,21 @@ const layout = node(
 
 function workspace(): LaymanState {
     return {layout, floatingWindows: []};
+}
+
+function workspaceWithFloatingWindow(): LaymanState {
+    return {
+        layout,
+        floatingWindows: [
+            {
+                id: "window-floating",
+                tabs: [tab("Floating", {}, "tab-floating")],
+                selectedTabId: "tab-floating",
+                position: {top: 80, left: 120, width: 320, height: 240},
+                zIndex: 1,
+            },
+        ],
+    };
 }
 
 class TestResizeObserver {
@@ -82,6 +98,26 @@ function WindowDragSource({onHandler}: {onHandler: (handlerId: Identifier) => vo
     return <div ref={drag}>window drag source</div>;
 }
 
+function FloatingWindowDragSource({onHandler}: {onHandler: (handlerId: Identifier) => void}) {
+    const [{handlerId}, drag] = useDrag(
+        () => ({
+            type: windowDragType,
+            item: {
+                id: "window-floating",
+                path: {floatingId: "window-floating"},
+                tabs: [tab("Floating", {}, "tab-floating")],
+                selectedTabId: "tab-floating",
+            },
+            collect: (monitor) => ({handlerId: monitor.getHandlerId()}),
+        }),
+        []
+    );
+    useEffect(() => {
+        if (handlerId) onHandler(handlerId);
+    }, [handlerId, onHandler]);
+    return <div ref={drag}>floating window drag source</div>;
+}
+
 function dragToCenter(backend: ITestBackend, sourceId: Identifier, targetId: Identifier) {
     act(() => {
         backend.simulateBeginDrag([sourceId], {
@@ -93,6 +129,17 @@ function dragToCenter(backend: ITestBackend, sourceId: Identifier, targetId: Ide
         backend.simulateDrop();
         backend.simulateEndDrag();
     });
+}
+
+async function startDrag(backend: ITestBackend, sourceId: Identifier) {
+    act(() => {
+        backend.simulateBeginDrag([sourceId], {
+            clientOffset: {x: 20, y: 20},
+            getSourceClientOffset: () => ({x: 20, y: 20}),
+        });
+        backend.simulatePublishDragSource();
+    });
+    await act(async () => undefined);
 }
 
 function dndRuntime(children: React.ReactNode, manager: DragDropManager, controller = createLaymanController({state: workspace()})) {
@@ -119,7 +166,7 @@ function dndRuntime(children: React.ReactNode, manager: DragDropManager, control
 }
 
 function targetId(container: HTMLElement): Identifier {
-    const target = container.querySelector("[data-layman-drop-target]");
+    const target = container.matches("[data-layman-drop-target]") ? container : container.querySelector("[data-layman-drop-target]");
     if (!target?.getAttribute("data-layman-drop-target")) throw new Error("drop target did not register");
     return target.getAttribute("data-layman-drop-target")!;
 }
@@ -185,7 +232,7 @@ describe("Layman DnD configuration", () => {
         unmount(root, container);
     });
 
-    it("rejects a policy-denied drop without changing the layout", async () => {
+    it("does not accept a policy-denied drop, and the controller rejects a direct bypass", async () => {
         const manager = createDragDropManager(TestBackend);
         const onTransition = vi.fn();
         const controller = createLaymanController({
@@ -215,6 +262,13 @@ describe("Layman DnD configuration", () => {
 
         expect(controller.inspect().windows.find((item) => item.id === "window-left")?.tabs.map((item) => item.id)).toEqual(["tab-left"]);
         expect(controller.inspect().windows.find((item) => item.id === "window-right")?.tabs.map((item) => item.id)).toEqual(["tab-right"]);
+        expect(onTransition).not.toHaveBeenCalled();
+        controller.dispatch({
+            type: "tab.move",
+            tabId: "tab-left",
+            target: {kind: "window", windowId: "window-right"},
+            placement: "center",
+        });
         expect(onTransition).toHaveBeenLastCalledWith(
             expect.objectContaining({reason: "forbidden", denial: {kind: "deny", reason: "the target window is locked"}})
         );
@@ -234,6 +288,42 @@ describe("Layman DnD configuration", () => {
         expect(controller.inspect().windows).toEqual([
             expect.objectContaining({id: "window-right", tabs: [expect.objectContaining({id: "tab-right"}), expect.objectContaining({id: "tab-left"})]}),
         ]);
+        unmount(root, container);
+    });
+
+    it("docks a floating window through the same policy-gated command boundary", async () => {
+        const manager = createDragDropManager(TestBackend);
+        const controller = createLaymanController({state: workspaceWithFloatingWindow()});
+        let sourceId: Identifier | undefined;
+        const {element} = dndRuntime(
+            <>
+                <FloatingWindowDragSource onHandler={(id) => (sourceId = id)} />
+                <FloatingDockZones />
+            </>,
+            manager,
+            controller
+        );
+        const {container, root} = mount(element);
+
+        await act(async () => undefined);
+        if (!sourceId) throw new Error("floating window source did not register");
+        const backend = manager.getBackend() as ITestBackend;
+        await startDrag(backend, sourceId);
+        await act(async () => {
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+        const topDockTarget = container.querySelector<HTMLElement>('[data-layman-dock-edge="top"]');
+        if (!topDockTarget) throw new Error("top dock zone did not render");
+
+        act(() => {
+            backend.simulateHover([targetId(topDockTarget)]);
+            backend.simulateDrop();
+            backend.simulateEndDrag();
+        });
+
+        expect(controller.getState().floatingWindows).toEqual([]);
+        expect(controller.inspect().windows.some((item) => item.id === "window-floating")).toBe(true);
         unmount(root, container);
     });
 

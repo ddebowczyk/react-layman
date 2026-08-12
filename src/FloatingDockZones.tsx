@@ -1,11 +1,13 @@
 import {useContext} from "react";
 import {useDragLayer, useDrop} from "react-dnd";
+import type {Identifier} from "dnd-core";
 import {windowDragType} from "./dnd/items";
 import {LaymanContext} from "./LaymanContext";
 import {findWindowRectAtPoint} from "./layoutGeometry";
 import {DragData, Position} from "./types";
 import {isFloatingAddress} from "./utils";
 import {BottomSplitIcon, LeftSplitIcon, RightSplitIcon, TopSplitIcon, UnfloatIcon} from "./Icons";
+import type {LaymanCommand, WindowTarget} from "./core/commands";
 
 // Fixed pixel sizes for the drop-zone overlays shown while dragging a floating
 // window. These are deliberately constant (not relative to container size) so
@@ -23,6 +25,15 @@ const EDGE_ICONS: Record<Edge, () => JSX.Element> = {
     left: LeftSplitIcon,
     right: RightSplitIcon,
 };
+
+function floatingWindowMoveCommand(
+    item: DragData,
+    target: WindowTarget,
+    placement: Edge | "center"
+): LaymanCommand | undefined {
+    if (!("tabs" in item) || !isFloatingAddress(item.path)) return undefined;
+    return {type: "window.move", windowId: item.id, target, placement};
+}
 
 /** Computes the container-relative rect for one of the 4 fixed edge zones. */
 function edgeZoneRect(edge: Edge, container: {width: number; height: number}, inset: number): Position {
@@ -52,20 +63,18 @@ function edgeZoneRect(edge: Edge, container: {width: number; height: number}, in
  *  root of the layout, on that edge (splitting the root only if it isn't
  *  already a matching-direction split). */
 function FloatingEdgeZone({edge, container}: {edge: Edge; container: {width: number; height: number}}) {
-    const {layoutDispatch, metrics} = useContext(LaymanContext);
-    const [{isOver}, drop] = useDrop<DragData, void, {isOver: boolean}>(() => ({
+    const {layoutDispatch, canExecute, metrics} = useContext(LaymanContext);
+    const [{isOver, handlerId}, drop] = useDrop<DragData, void, {isOver: boolean; handlerId: Identifier | null}>(() => ({
         accept: [windowDragType],
-        canDrop: (item) => "tabs" in item && isFloatingAddress(item.path),
-        drop: (item) => {
-            if (!("tabs" in item)) return;
-            layoutDispatch({
-                type: "window.move",
-                windowId: item.id,
-                target: {kind: "root"},
-                placement: edge,
-            });
+        canDrop: (item) => {
+            const command = floatingWindowMoveCommand(item, {kind: "root"}, edge);
+            return command !== undefined && canExecute(command).kind === "allow";
         },
-        collect: (monitor) => ({isOver: monitor.isOver()}),
+        drop: (item) => {
+            const command = floatingWindowMoveCommand(item, {kind: "root"}, edge);
+            if (command) layoutDispatch(command);
+        },
+        collect: (monitor) => ({isOver: monitor.isOver(), handlerId: monitor.getHandlerId()}),
     }));
     const Icon = EDGE_ICONS[edge];
     return (
@@ -75,6 +84,7 @@ function FloatingEdgeZone({edge, container}: {edge: Edge; container: {width: num
             style={{position: "absolute", ...edgeZoneRect(edge, container, metrics.dockZoneInset)}}
             data-layman-component="dock-zone"
             data-layman-dock-edge={edge}
+            data-layman-drop-target={handlerId ?? undefined}
         >
             <Icon />
         </div>
@@ -85,21 +95,19 @@ function FloatingEdgeZone({edge, container}: {edge: Edge; container: {width: num
  *  cursor is currently over, and merges the dragged floating window's tabs
  *  into it. */
 function FloatingCenterZone({windowId, position}: {windowId: string; position: Position}) {
-    const {layoutDispatch} = useContext(LaymanContext);
-    const [{isOver}, drop] = useDrop<DragData, void, {isOver: boolean}>(
+    const {layoutDispatch, canExecute} = useContext(LaymanContext);
+    const [{isOver, handlerId}, drop] = useDrop<DragData, void, {isOver: boolean; handlerId: Identifier | null}>(
         () => ({
             accept: [windowDragType],
-            canDrop: (item) => "tabs" in item && isFloatingAddress(item.path),
-            drop: (item) => {
-                if (!("tabs" in item)) return;
-                layoutDispatch({
-                    type: "window.move",
-                    windowId: item.id,
-                    target: {kind: "window", windowId},
-                    placement: "center",
-                });
+            canDrop: (item) => {
+                const command = floatingWindowMoveCommand(item, {kind: "window", windowId}, "center");
+                return command !== undefined && canExecute(command).kind === "allow";
             },
-            collect: (monitor) => ({isOver: monitor.isOver()}),
+            drop: (item) => {
+                const command = floatingWindowMoveCommand(item, {kind: "window", windowId}, "center");
+                if (command) layoutDispatch(command);
+            },
+            collect: (monitor) => ({isOver: monitor.isOver(), handlerId: monitor.getHandlerId()}),
         }),
         [windowId]
     );
@@ -119,6 +127,7 @@ function FloatingCenterZone({windowId, position}: {windowId: string; position: P
             style={{position: "absolute", ...rect}}
             data-layman-component="dock-zone"
             data-layman-dock-edge="center"
+            data-layman-drop-target={handlerId ?? undefined}
         >
             <UnfloatIcon />
         </div>
