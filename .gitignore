@@ -13,7 +13,6 @@ demo/dist
 dist-ssr
 *.local
 tsconfig*.tsbuildinfo
-lib/
 
 # Editor directories and files
 .vscode/*
