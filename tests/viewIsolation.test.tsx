@@ -51,6 +51,7 @@ describe("Layman view isolation", () => {
         });
 
         expect(document.querySelectorAll("#drag-window-border")).toHaveLength(0);
+        expect(document.querySelectorAll("[id]")).toHaveLength(0);
         expect(left.id).toBe("");
         expect(right.id).toBe("");
         expect(left.querySelector('[data-layman-component="drag-border-layer"]')).not.toBeNull();

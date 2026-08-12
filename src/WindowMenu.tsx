@@ -40,6 +40,8 @@ export function WindowMenu({windowId, position, tabs, selectedTabId, open, setOp
         >
             <ToolbarButton
                 className="toolbar-button layman-window-menu-trigger"
+                aria-label={open ? "Close window controls" : "Open window controls"}
+                aria-expanded={open}
                 onClick={() => setOpen(!open)}
                 style={{width: buttonSize, height: buttonSize}}
             >
@@ -54,9 +56,10 @@ export function WindowMenu({windowId, position, tabs, selectedTabId, open, setOp
                                 className={`layman-window-menu-tab ${tab.id === selectedTabId ? "selected" : ""}`}
                             >
                                 <button
+                                    type="button"
                                     className="tab-selector"
                                     disabled={canExecute({type: "tab.select", tabId: tab.id}).kind === "deny"}
-                                    onMouseDown={() => {
+                                    onClick={() => {
                                         layoutDispatch({type: "tab.select", tabId: tab.id});
                                         setOpen(false);
                                     }}
@@ -64,6 +67,8 @@ export function WindowMenu({windowId, position, tabs, selectedTabId, open, setOp
                                     {renderTab(tab, windowId, tab.id === selectedTabId)}
                                 </button>
                                 <button
+                                    type="button"
+                                    aria-label={`Close ${tab.title}`}
                                     className="close-tab"
                                     disabled={canExecute({type: "tab.remove", tabId: tab.id}).kind === "deny"}
                                     onClick={() => layoutDispatch({type: "tab.remove", tabId: tab.id})}

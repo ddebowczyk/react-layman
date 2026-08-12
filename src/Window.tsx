@@ -97,7 +97,6 @@ export function Window({windowId, position: rawPosition, path, tab, isSelected, 
 
     return (
         <div
-            id={tab.id}
             style={{
                 ...adjustedWindowPosition,
                 transform: `scale(${scale})`,

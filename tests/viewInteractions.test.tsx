@@ -29,6 +29,23 @@ describe("Layman view interactions", () => {
         expect(transitions).toContainEqual(expect.objectContaining({command: {type: "tab.select", tabId: "tab-second"}, status: "applied"}));
     });
 
+    it("selects a tab through keyboard focus and activation", async () => {
+        const first = tab("First", {}, "tab-first");
+        const second = tab("Second", {}, "tab-second");
+        const {controller, user} = renderLaymanView({
+            state: {layout: window("window-main", first, second), floatingWindows: []},
+        });
+
+        await user.tab();
+        await user.tab();
+        await user.tab();
+        const secondTab = screen.getByRole("button", {name: "Second"});
+        expect(document.activeElement).toBe(secondTab);
+        await user.keyboard("{Enter}");
+
+        expect(controller.inspect().windows[0]?.selectedTabId).toBe("tab-second");
+    });
+
     it("closes a tab through an accessible control", async () => {
         const first = tab("First", {}, "tab-first");
         const second = tab("Second", {}, "tab-second");
@@ -42,6 +59,23 @@ describe("Layman view interactions", () => {
             selectedTabId: "tab-first",
             tabs: [{id: "tab-first"}],
         });
+    });
+
+    it("exposes compact window controls with named toggle and tab actions", async () => {
+        const {user} = renderLaymanView({
+            state: {layout: window("window-main", tab("First", {}, "tab-first")), floatingWindows: []},
+            config: {
+                showTabs: false,
+                toolbar: {items: [{kind: "builtin", id: "close", action: "window.close"}]},
+            },
+        });
+
+        const trigger = screen.getByRole("button", {name: "Open window controls"});
+        expect(trigger.getAttribute("aria-expanded")).toBe("false");
+        await user.click(trigger);
+
+        expect(screen.getByRole("button", {name: "Close First"})).toBeTruthy();
+        expect(screen.getByRole("button", {name: "Close window controls"}).getAttribute("aria-expanded")).toBe("true");
     });
 
     it("maximizes and restores a tiled window", async () => {

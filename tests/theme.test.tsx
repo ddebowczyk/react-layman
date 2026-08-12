@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import {readFileSync} from "node:fs";
+import {resolve} from "node:path";
 import {createRoot, type Root} from "react-dom/client";
 import {act} from "react-dom/test-utils";
 import {createDragDropManager} from "dnd-core";
@@ -65,6 +67,17 @@ afterEach(() => {
 });
 
 describe("Layman view themes and slots", () => {
+    it("keeps focus and motion tokens scoped to each view root", () => {
+        const stylesheet = readFileSync(resolve(process.cwd(), "styles/global.css"), "utf8");
+
+        expect(stylesheet).toContain(".layman-root {");
+        expect(stylesheet).not.toContain(":root");
+        expect(stylesheet).toContain("button:focus-visible");
+        expect(stylesheet).toContain("outline: 2px solid var(--layman-accent-color)");
+        expect(stylesheet).toContain("@media (prefers-reduced-motion: reduce)");
+        expect(stylesheet).toContain("--layman-motion-duration: 0ms");
+    });
+
     it("scopes themes and geometry to each view root", () => {
         const {container, root} = mount(
             <>

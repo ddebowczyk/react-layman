@@ -9,7 +9,7 @@ import {WindowToolbarWidgets} from "./toolbar/WindowToolbarWidgets";
 import type {ToolbarActionRuntime} from "./toolbar/builtinActions";
 import {hasToolbarSurfaceItems, resolveToolbarItems} from "./toolbar/items";
 import type {Position, ToolBarProps} from "./types";
-import {addressKey, isFloatingAddress} from "./utils";
+import {isFloatingAddress} from "./utils";
 import {useWindowDrag} from "./useWindowDrag";
 
 function usePrevious(value: number) {
@@ -116,7 +116,6 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
 
     const toolbarChrome = showTabs ? (
                 <div
-                    id={addressKey(path)}
                     style={{
                         ...windowToolbarPosition,
                         transform: `scale(${scale})`,
@@ -140,7 +139,7 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
                                     tab={tab}
                                     isSelected={tab.id === selectedTabId}
                                     onDelete={() => layoutDispatch({type: "tab.remove", tabId: tab.id})}
-                                    onMouseDown={() => layoutDispatch({type: "tab.select", tabId: tab.id})}
+                                    onSelect={() => layoutDispatch({type: "tab.select", tabId: tab.id})}
                                 />
                             ))
                         ) : (
@@ -149,10 +148,8 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
                                 tab={tabs[0]}
                                 windowId={windowId}
                                 onDelete={() => layoutDispatch({type: "tab.remove", tabId: tabs[0].id})}
-                                onMouseDown={(event) => {
-                                    setDragStartPosition({x: event.clientX, y: event.clientY});
-                                    layoutDispatch({type: "tab.select", tabId: tabs[0].id});
-                                }}
+                                onMouseDown={(event) => setDragStartPosition({x: event.clientX, y: event.clientY})}
+                                onSelect={() => layoutDispatch({type: "tab.select", tabId: tabs[0].id})}
                             />
                         )}
                     </div>
@@ -161,7 +158,7 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
                         <WindowToolbarWidgets items={items} runtime={runtime} surface="bar" />
                         {hasOverflow && (
                             <div className="layman-toolbar-overflow">
-                                <ToolbarButton aria-label="More window controls" onClick={() => setOverflowOpen(!overflowOpen)}>
+                                <ToolbarButton aria-label="More window controls" aria-expanded={overflowOpen} onClick={() => setOverflowOpen(!overflowOpen)}>
                                     <EllipsisIcon />
                                 </ToolbarButton>
                                 {overflowOpen && (
