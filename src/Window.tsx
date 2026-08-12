@@ -49,10 +49,7 @@ export function Window({windowId, position: rawPosition, path, tab, isSelected, 
     }));
 
     // State to keep track of the current mouse position (top, left) during dragging
-    const [currentMousePosition, setCurrentMousePosition] = useState({
-        top: position.top,
-        left: position.left,
-    });
+    const [currentMousePosition, setCurrentMousePosition] = useState({top: 0, left: 0});
 
     // Effect to handle dragging logic and update the current mouse position during dragging
     useEffect(() => {
