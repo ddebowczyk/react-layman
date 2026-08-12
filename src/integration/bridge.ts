@@ -65,6 +65,7 @@ export function createLaymanWorkspaceBridge<TData extends JsonValue>(
                     originId: options.originId,
                     snapshot: pending.snapshot,
                 });
+                if (pending.epoch !== persistenceEpoch) return;
 
                 if (result.status === "saved") {
                     if (
