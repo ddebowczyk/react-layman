@@ -1,0 +1,11 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "baseUrl": "../..",
+        "paths": {
+            "react-layman": ["lib/index.d.ts"],
+            "react-layman/styles.css": ["tests/package-consumer/styles.d.ts"]
+        }
+    },
+    "include": ["consumer.ts", "styles.d.ts"]
+}

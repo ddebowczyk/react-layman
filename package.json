@@ -1,6 +1,6 @@
 {
     "name": "react-layman",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "type": "module",
     "description": "A dynamic tiling layout manager made for React",
     "main": "lib/react-layman.js",
@@ -29,6 +29,8 @@
         "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
         "test": "vitest run",
         "test:watch": "vitest",
+        "typecheck:consumer": "npm run build:lib && tsc --project tests/package-consumer/tsconfig.json",
+        "check:package": "node scripts/check-package.mjs",
         "prepublishOnly": "npm run build:lib"
     },
     "repository": {

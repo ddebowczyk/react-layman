@@ -1,0 +1,30 @@
+import {execFileSync} from "node:child_process";
+import {readFileSync} from "node:fs";
+import {fileURLToPath} from "node:url";
+
+const root = fileURLToPath(new URL("../", import.meta.url));
+const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+
+function fail(message) {
+    throw new Error(`[package-check] ${message}`);
+}
+
+function pack() {
+    const output = execFileSync("npm", ["pack", "--dry-run", "--json"], {cwd: root, encoding: "utf8"});
+    const result = JSON.parse(output);
+    if (!Array.isArray(result) || result.length !== 1 || !Array.isArray(result[0]?.files)) {
+        fail("npm pack did not report exactly one package file list");
+    }
+    return result[0];
+}
+
+if (packageJson.exports?.["."]?.types !== "./lib/index.d.ts") fail("root declaration export is missing");
+if (packageJson.exports?.["./styles.css"] !== "./lib/index.css") fail("stylesheet export is missing");
+
+const packed = pack();
+const paths = new Set(packed.files.map((file) => file.path));
+for (const required of ["lib/index.d.ts", "lib/index.css", "lib/react-layman.js", "package.json", "README.md", "LICENSE"]) {
+    if (!paths.has(required)) fail(`packed file is missing: ${required}`);
+}
+
+console.log(`[package-check] ${packageJson.name}@${packageJson.version} includes public declarations and stylesheet.`);
