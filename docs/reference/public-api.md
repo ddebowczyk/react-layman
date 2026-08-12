@@ -55,6 +55,10 @@ the policy result in `denial`.
 applies to commands, not to `replaceState`; the host must authorize external
 state before replacing it when that is required.
 
+`useLaymanController` also validates each controlled `state` update before it
+becomes controller state. An invalid update throws and leaves the prior valid
+state in place.
+
 ## React view
 
 <!-- markdownlint-disable MD013 -->

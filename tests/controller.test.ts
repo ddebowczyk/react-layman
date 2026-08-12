@@ -1,5 +1,6 @@
 import {describe, expect, it, vi} from "vitest";
 import {createLaymanController} from "../src/controller";
+import {createLaymanControllerStore} from "../src/controller/createLaymanController";
 import type {LaymanState} from "../src/core";
 import {tab, window} from "./helpers";
 
@@ -88,5 +89,17 @@ describe("Layman controller", () => {
             floatingWindows: [],
         };
         expect(() => createLaymanController({state: invalid})).toThrow("controller state is invalid");
+    });
+
+    it("rejects invalid controlled state during a controller sync", () => {
+        const controller = createLaymanControllerStore({state: workspace()});
+        const before = controller.getState();
+        const invalid: LaymanState<{path: string}> = {
+            layout: {...workspace().layout!, selectedTabId: null},
+            floatingWindows: [],
+        };
+
+        expect(() => controller.sync(invalid, {})).toThrow("controller state is invalid");
+        expect(controller.getState()).toBe(before);
     });
 });

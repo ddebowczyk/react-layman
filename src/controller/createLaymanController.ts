@@ -109,6 +109,8 @@ export function createLaymanControllerStore<TData extends JsonValue>(options: La
             return () => listeners.delete(listener);
         },
         sync(next, nextCallbacks) {
+            const validation = validateLaymanState(next);
+            if (!validation.valid) throw new Error(`[Layman] controller state is invalid: ${validation.issues.join(", ")}`);
             state = next;
             callbacks = nextCallbacks;
             interaction = nextCallbacks.interaction;
