@@ -39,6 +39,11 @@ export function isValidFloatingPosition(value: Position): boolean {
     return [value.top, value.left, value.width, value.height].every(Number.isFinite) && value.width > 0 && value.height > 0;
 }
 
+/** A split percentage is optional, but when supplied it must occupy visible space. */
+export function isValidViewPercent(value: unknown): boolean {
+    return value === undefined || (typeof value === "number" && Number.isFinite(value) && value > 0);
+}
+
 /** Validates the complete state graph without changing it. */
 export function validateLaymanState<TData extends JsonValue>(state: LaymanState<TData>): LaymanValidation {
     const issues = new Set<LaymanValidationIssue>();
@@ -66,7 +71,7 @@ export function validateLaymanState<TData extends JsonValue>(state: LaymanState<
             if ((tree.tabs.length === 0 && tree.selectedTabId !== null) || (tree.tabs.length > 0 && !localIds.has(tree.selectedTabId ?? ""))) {
                 issues.add("invalid-selection");
             }
-            if (tree.viewPercent !== undefined && !Number.isFinite(tree.viewPercent)) issues.add("invalid-view-percent");
+            if (!isValidViewPercent(tree.viewPercent)) issues.add("invalid-view-percent");
             return;
         }
         if (!isId(tree.id)) issues.add("empty-id");
@@ -74,7 +79,7 @@ export function validateLaymanState<TData extends JsonValue>(state: LaymanState<
         if (layoutIds.has(tree.id)) issues.add("duplicate-layout-id");
         splitIds.add(tree.id);
         layoutIds.add(tree.id);
-        if (tree.viewPercent !== undefined && !Number.isFinite(tree.viewPercent)) issues.add("invalid-view-percent");
+        if (!isValidViewPercent(tree.viewPercent)) issues.add("invalid-view-percent");
         tree.children.forEach(visitTree);
     };
 

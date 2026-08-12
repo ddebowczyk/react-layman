@@ -11,7 +11,7 @@ import {
     LaymanTree,
     Position,
 } from "./types";
-import {isValidFloatingPosition} from "./core/validation";
+import {isValidFloatingPosition, isValidViewPercent} from "./core/validation";
 
 export const LAYMAN_SNAPSHOT_VERSION = 2 as const;
 
@@ -168,8 +168,8 @@ function validateLayout(
         value.kind === "window" ? ["kind", "id", "tabs", "selectedTabId", "viewPercent"] : ["kind", "id", "direction", "children", "viewPercent"],
         `layout ${value.kind}`
     );
-    if (value.viewPercent !== undefined && (typeof value.viewPercent !== "number" || !Number.isFinite(value.viewPercent))) {
-        fail("viewPercent must be finite");
+    if (!isValidViewPercent(value.viewPercent)) {
+        fail("viewPercent must be a positive finite number");
     }
     if (value.kind === "window") {
         if (!isId(value.id)) fail("window id is required");

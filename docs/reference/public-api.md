@@ -115,10 +115,10 @@ available built-in actions are `tab.create`, `window.split.top`,
 <!-- markdownlint-enable MD013 -->
 
 Only schema version `2` is accepted. Unknown fields, duplicate IDs, invalid
-selections, non-positive floating dimensions, non-finite numbers, cyclic data,
-and non-JSON tab data are rejected. Layman does not silently migrate a
-snapshot. The host must perform any earlier-format migration before it calls
-`deserializeState`.
+selections, non-positive floating dimensions or split percentages, non-finite
+numbers, cyclic data, and non-JSON tab data are rejected. Layman does not
+silently migrate a snapshot. The host must perform any earlier-format migration
+before it calls `deserializeState`.
 
 ## Tauri and external host bridge
 

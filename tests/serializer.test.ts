@@ -48,6 +48,15 @@ describe("current snapshot serialization", () => {
         }) as LaymanWindow;
         expect(result).toMatchObject({id: "window-main", selectedTabId: "tab-b", viewPercent: 25});
         expect(result.tabs[1]).toEqual({id: "tab-b", title: "B", data: {flag: true}});
+        expect(() =>
+            deserializeLayout({
+                kind: "window",
+                id: "window-zero-percent",
+                selectedTabId: null,
+                tabs: [],
+                viewPercent: 0,
+            })
+        ).toThrow("viewPercent must be a positive finite number");
     });
 });
 

@@ -58,4 +58,18 @@ describe("stable layout identities and inspection", () => {
 
         expect(validateLaymanState(state)).toMatchObject({valid: false, issues: ["duplicate-layout-id"]});
     });
+
+    it("rejects non-positive split percentages before they reach rendering", () => {
+        const state: LaymanState = {
+            layout: node(
+                "split-main",
+                "row",
+                {...window("window-main", tab("Main", {}, "tab-main")), viewPercent: 0},
+                {...window("window-side", tab("Side", {}, "tab-side")), viewPercent: 100}
+            ),
+            floatingWindows: [],
+        };
+
+        expect(validateLaymanState(state)).toMatchObject({valid: false, issues: ["invalid-view-percent"]});
+    });
 });
