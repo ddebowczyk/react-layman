@@ -13,7 +13,7 @@ interface WindowDropTargetProps {
 }
 
 export function WindowDropTarget({windowId, path, position, placement}: WindowDropTargetProps) {
-    const {globalContainerSize, layoutDispatch, setDropHighlightPosition, maxDepth, showTabs} =
+    const {globalContainerSize, layoutDispatch, setDropHighlightPosition, maxDepth, showTabs, metrics} =
         useContext(LaymanContext);
     const newDropHighlightPosition = useRef<Position>({
         top: 0,
@@ -27,14 +27,8 @@ export function WindowDropTarget({windowId, path, position, placement}: WindowDr
     // every placement behaves like "center" there and is always allowed.
     const wouldExceedMaxDepth = placement !== "center" && !isFloatingAddress(path) && path.length >= maxDepth;
 
-    const windowToolbarHeight = showTabs
-        ? parseInt(getComputedStyle(document.documentElement).getPropertyValue("--toolbar-height").trim(), 10) || 64
-        : 0;
-
-    // parseInt returns NaN (not null/undefined) when the CSS variable is missing,
-    // so the fallback must use || rather than ?? to actually take effect.
-    const separatorThickness =
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--separator-thickness").trim(), 10) || 8;
+    const windowToolbarHeight = showTabs ? metrics.toolbarHeight : 0;
+    const {separatorThickness} = metrics;
 
     useEffect(() => {
         const dropPosition: Position = {
@@ -118,5 +112,12 @@ export function WindowDropTarget({windowId, path, position, placement}: WindowDr
     // Don't render a drop target for edge placements past the depth limit.
     if (wouldExceedMaxDepth) return null;
 
-    return <div ref={drop} className={`layman-window-drop-target ${placement}`} data-layman-drop-target={handlerId ?? undefined}></div>;
+    return (
+        <div
+            ref={drop}
+            className={`layman-window-drop-target ${placement}`}
+            data-layman-component="drop-target"
+            data-layman-drop-target={handlerId ?? undefined}
+        ></div>
+    );
 }

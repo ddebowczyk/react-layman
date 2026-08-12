@@ -377,17 +377,75 @@ For an isolated local React view, use `defaultState` instead of `state` and
 const controller = useLaymanController({defaultState: initialState});
 ```
 
-`LaymanView` accepts only a controller, `LaymanViewConfig`, and
-`LaymanComponents`. `components.Pane`, `components.Tab`, and optional
-`components.Empty` receive the tab data, selected state, window ID, controller,
-and command dispatcher. The view adds its stable `viewId`, depth limit, and tab
-visibility to user-command policy context; it does not define a second policy.
+`LaymanView` accepts a controller, `LaymanViewConfig`, and `LaymanComponents`.
+`components.Pane`, `components.Tab`, and optional `components.Empty` receive
+the tab data, selected state, window ID, controller, and command dispatcher.
+The view adds its stable `viewId`, depth limit, and tab visibility to
+user-command policy context; it does not define a second policy.
 
-## Theme
+## Scoped themes and visual slots
 
-Layman applies its default CSS automatically. Override its CSS variables in
-your application. See [`styles/example-theme.css`](styles/example-theme.css)
-for the available values.
+`config.theme` applies visual tokens to that view root only. Numeric dimension
+values use pixels. Strings can use any valid CSS value. No token writes to
+`:root`, so independent views can use different geometry and colors.
+
+```tsx
+<LaymanView
+    controller={controller}
+    className="module-workspace"
+    style={{minHeight: 0}}
+    config={{
+        viewId: "modules",
+        theme: {
+            toolbarHeight: 36,
+            separatorThickness: "0.25rem",
+            toolbarBackground: "#172033",
+            windowBackground: "#202c44",
+            accentColor: "#60a5fa",
+            floatingShadow: "0 12px 32px rgb(0 0 0 / 0.35)",
+        },
+    }}
+    components={components}
+/>
+```
+
+The supported theme tokens are `separatorThickness`, `separatorHandleColor`,
+`separatorHandleLength`, `toolbarHeight`, `toolbarBackground`,
+`toolbarHoverBackground`, `toolbarButtonHoverBackground`, `windowBackground`,
+`tabTextColor`, `tabFontSize`, `closeTabColor`, `accentColor`,
+`indicatorThickness`, `borderRadius`, `floatingShadow`, `dockZoneInset`,
+`floatingResizeHandleSize`, and `motionDuration`. The default stylesheet also
+uses `prefers-reduced-motion` to set motion duration to zero.
+
+For a CSS-owned theme, apply a class to the same `LaymanView`; never set
+Layman variables on `:root`. [`styles/example-theme.css`](styles/example-theme.css)
+shows the supported `--layman-*` variables.
+
+`Pane`, `Tab`, and `Empty` are semantic render slots. `ToolbarFrame` is a
+visual wrapper around Layman's existing toolbar behavior. It must render its
+`children`, which preserves dragging, policy checks, and your configured
+toolbar widgets.
+
+```tsx
+const components: LaymanComponents<ModuleData> = {
+    Pane: ModulePane,
+    Tab: ModuleTab,
+    Empty: EmptyWorkspace,
+    ToolbarFrame: ({window, isMaximized, children}) => (
+        <section data-module-window={window.id} data-maximized={isMaximized}>
+            {children}
+        </section>
+    ),
+};
+```
+
+Stable `data-layman-*` attributes support host inspection and CSS targeting:
+`data-layman-view`, `data-layman-component`, `data-layman-window`,
+`data-layman-tab`, `data-layman-split`, `data-layman-drop-target`,
+`data-layman-dock-edge`, and `data-layman-resize-direction`. The documented
+component values are `root`, `window`, `toolbar`, `tab`, `empty`, `separator`,
+`drop-target`, `dock-zone`, `floating-resize-layer`, `floating-resize-handle`,
+and `window-menu`. Other CSS classes are private implementation detail.
 
 ## Quality checks
 

@@ -8,6 +8,7 @@ import {isFloatingAddress} from "./utils";
 export function Window({windowId, position: rawPosition, path, tab, isSelected, zIndex: floatingZIndex}: WindowProps) {
     const {
         globalContainerSize,
+        metrics,
         renderPane,
         draggedWindowTabs,
         windowDragStartPosition,
@@ -20,16 +21,10 @@ export function Window({windowId, position: rawPosition, path, tab, isSelected, 
 
     const isFloating = isFloatingAddress(path);
 
-    // parseInt returns NaN (not null/undefined) when the CSS variable is missing,
-    // so the fallback must use || rather than ?? to actually take effect.
-    const separatorThickness =
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--separator-thickness").trim(), 10) || 8;
-
     // When the tab row is hidden the toolbar takes no vertical space, so the pane
     // fills the entire window region.
-    const windowToolbarHeight = showTabs
-        ? parseInt(getComputedStyle(document.documentElement).getPropertyValue("--toolbar-height").trim(), 10) || 64
-        : 0;
+    const windowToolbarHeight = showTabs ? metrics.toolbarHeight : 0;
+    const {separatorThickness} = metrics;
 
     // A maximized window overrides its layout position to fill the whole container.
     const isMaximized = maximizedWindowId === windowId;
@@ -128,6 +123,9 @@ export function Window({windowId, position: rawPosition, path, tab, isSelected, 
             }}
             className={`layman-window ${isSelected ? "selected" : "unselected"} ${isFloating ? "floating" : ""}`}
             onMouseDown={bringToFront}
+            data-layman-component="window"
+            data-layman-window={windowId}
+            data-layman-tab={tab.id}
         >
             {isDragging &&
                 !isFloating &&
@@ -139,8 +137,8 @@ export function Window({windowId, position: rawPosition, path, tab, isSelected, 
                             ...borderPosition,
                             transform: `scale(${scale})`,
                             transformOrigin: `${windowDragStartPosition.x}px top`,
-                            border: "1px solid var(--indicator-color, #f97316)",
-                            borderRadius: "var(--border-radius, 8px)",
+                            border: "var(--layman-indicator-thickness) solid var(--layman-accent-color)",
+                            borderRadius: "var(--layman-border-radius)",
                             pointerEvents: "none",
                             userSelect: "none",
                         }}

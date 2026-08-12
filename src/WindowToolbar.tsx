@@ -26,6 +26,7 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
         layoutDispatch,
         canExecute,
         globalContainerSize,
+        metrics,
         globalDragging,
         toolbar,
         inspection,
@@ -34,6 +35,7 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
         maxDepth,
         showTabs,
         viewId,
+        renderToolbarFrame,
     } = useContext(LaymanContext);
     const tabContainerRef = useRef<HTMLDivElement>(null);
     const [menuOpen, setMenuOpen] = useState(false);
@@ -44,9 +46,8 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
         ? {top: 0, left: 0, width: globalContainerSize.width, height: globalContainerSize.height}
         : rawPosition;
     const previousTabCount = usePrevious(tabs.length);
-    const cssToolbarHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--toolbar-height").trim(), 10) || 64;
-    const windowToolbarHeight = showTabs ? cssToolbarHeight : 0;
-    const separatorThickness = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--separator-thickness").trim(), 10) || 8;
+    const windowToolbarHeight = showTabs ? metrics.toolbarHeight : 0;
+    const {separatorThickness} = metrics;
     const atMaxDepth = isFloating || path.length >= maxDepth;
 
     useEffect(() => {
@@ -113,9 +114,7 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
         }
     };
 
-    return (
-        <>
-            {showTabs ? (
+    const toolbarChrome = showTabs ? (
                 <div
                     id={addressKey(path)}
                     style={{
@@ -128,6 +127,8 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
                     }}
                     className={`layman-toolbar ${isFloating ? "floating" : ""}`}
                     onMouseDown={bringToFront}
+                    data-layman-component="toolbar"
+                    data-layman-window={windowId}
                 >
                     <div ref={tabContainerRef} className="tab-container" onWheel={handleTabContainerWheel}>
                         {tabs.length > 1 ? (
@@ -184,14 +185,18 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
                         controls={<WindowToolbarWidgets items={items} runtime={runtime} surface="compact" />}
                     />
                 )
-            )}
+            );
+
+    return (
+        <>
+            {toolbarChrome && renderToolbarFrame({window: toolbarContext.window, isMaximized, children: toolbarChrome})}
             {!isAnyDragActive && (
                 <div
                     style={{
                         position: "absolute",
                         ...dropTargetsPosition,
                         zIndex: 10,
-                        margin: "calc(var(--separator-thickness, 8px) / 2)",
+                        margin: "calc(var(--layman-separator-thickness) / 2)",
                         marginTop: 0,
                         pointerEvents: globalDragging ? "auto" : "none",
                     }}

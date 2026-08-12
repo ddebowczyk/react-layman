@@ -1,16 +1,20 @@
-import {useSyncExternalStore} from "react";
+import {useMemo, useSyncExternalStore} from "react";
+import type {CSSProperties} from "react";
 import type {LaymanCommand} from "../core/commands";
 import type {JsonValue, LaymanState, LaymanTab} from "../core/model";
 import {LaymanRuntime} from "../LaymanContext";
 import {LaymanCanvas} from "../Layman";
 import type {LaymanCommandAuthorizer, LaymanCommandDispatcher, LaymanController} from "../controller/types";
 import type {LaymanToolbarConfig} from "../toolbar/types";
-import type {LaymanComponents, LaymanViewConfig} from "./types";
+import type {LaymanComponents, LaymanToolbarFrameProps, LaymanViewConfig} from "./types";
+import {laymanThemeStyle} from "./theme";
 
 export interface LaymanViewProps<TData extends JsonValue> {
     controller: LaymanController<TData>;
     config: LaymanViewConfig<TData>;
     components: LaymanComponents<TData>;
+    className?: string;
+    style?: CSSProperties;
 }
 
 function useControllerState<TData extends JsonValue>(controller: LaymanController<TData>): Readonly<LaymanState<TData>> {
@@ -22,11 +26,12 @@ function useControllerState<TData extends JsonValue>(controller: LaymanControlle
 }
 
 /** Renders a controlled Layman workspace through the public controller contract. */
-export function LaymanView<TData extends JsonValue>({controller, config, components}: LaymanViewProps<TData>) {
+export function LaymanView<TData extends JsonValue>({controller, config, components, className, style}: LaymanViewProps<TData>) {
     const state = useControllerState(controller);
     const inspection = controller.inspect();
-    const {Pane, Tab, Empty} = components;
+    const {Pane, Tab, Empty, ToolbarFrame} = components;
     const view = {viewId: config.viewId, maxDepth: config.maxDepth ?? Infinity, showTabs: config.showTabs ?? true};
+    const rootStyle = useMemo(() => ({...laymanThemeStyle(config.theme), ...style}), [config.theme, style]);
     const dispatch: LaymanCommandDispatcher<TData> = (command) => {
         return controller.dispatch(command, {origin: "user", view});
     };
@@ -56,15 +61,22 @@ export function LaymanView<TData extends JsonValue>({controller, config, compone
                     dispatch={dispatch}
                 />
             )}
-            renderNull={() =>
-                Empty ? <Empty controller={controller} dispatch={dispatch} /> : <div className="layman-empty">No windows</div>
-            }
+            renderNull={() => (
+                <div className="layman-empty" data-layman-component="empty">
+                    {Empty ? <Empty controller={controller} dispatch={dispatch} /> : "No windows"}
+                </div>
+            )}
             dnd={config.dnd}
             maxDepth={view.maxDepth}
             showTabs={view.showTabs}
             toolbar={config.toolbar as LaymanToolbarConfig | undefined}
             viewId={config.viewId}
             ariaLabel={config.ariaLabel}
+            rootClassName={className}
+            rootStyle={rootStyle}
+            renderToolbarFrame={(props) =>
+                ToolbarFrame ? <ToolbarFrame {...(props as LaymanToolbarFrameProps<TData>)} /> : props.children
+            }
         >
             <LaymanCanvas />
         </LaymanRuntime>

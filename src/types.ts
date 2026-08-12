@@ -1,4 +1,4 @@
-import type {Dispatch, SetStateAction} from "react";
+import type {CSSProperties, Dispatch, ReactNode, SetStateAction} from "react";
 import type {LaymanCommand} from "./core/commands";
 import type {LaymanInspection} from "./core/inspection";
 import type {
@@ -11,6 +11,8 @@ import type {
 } from "./core/model";
 import type {LaymanCommandAuthorizer, LaymanControllerTransition} from "./controller/types";
 import type {LaymanToolbarConfig} from "./toolbar/types";
+import type {LaymanToolbarFrameProps} from "./view/types";
+import type {LaymanViewMetrics} from "./view/metrics";
 
 export type {
     FloatingWindowData,
@@ -85,6 +87,8 @@ export type TabRenderer = (tab: LaymanTab, windowId: string, selected: boolean) 
 export interface LaymanContextType {
     globalContainerSize: Position;
     setGlobalContainerSize: Dispatch<SetStateAction<Position>>;
+    metrics: LaymanViewMetrics;
+    setMetrics: Dispatch<SetStateAction<LaymanViewMetrics>>;
     layout: LaymanLayout;
     layoutDispatch: (command: LaymanCommand) => LaymanControllerTransition;
     setDropHighlightPosition: Dispatch<Position>;
@@ -107,6 +111,9 @@ export interface LaymanContextType {
     showTabs: boolean;
     viewId: string;
     ariaLabel?: string;
+    rootClassName?: string;
+    rootStyle: CSSProperties;
+    renderToolbarFrame: (props: LaymanToolbarFrameProps) => ReactNode;
 }
 
 export type LaymanSchemaVersion = 2;

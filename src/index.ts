@@ -61,6 +61,8 @@ export type {
     LaymanEmptyProps,
     LaymanPaneProps,
     LaymanTabProps,
+    LaymanTheme,
+    LaymanToolbarFrameProps,
     LaymanViewConfig,
     LaymanViewProps,
 } from "./view";

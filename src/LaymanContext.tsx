@@ -14,10 +14,14 @@ import {
     Position,
     TabRenderer,
 } from "./types";
+import {defaultLaymanViewMetrics} from "./view/metrics";
+import type {LaymanToolbarFrameProps} from "./view/types";
 
 const defaultContextValue: LaymanContextType = {
     globalContainerSize: {top: 0, left: 0, width: 0, height: 0},
     setGlobalContainerSize: () => {},
+    metrics: defaultLaymanViewMetrics,
+    setMetrics: () => {},
     layout: undefined,
     layoutDispatch: () => {
         throw new Error("[Layman] a view controller is required");
@@ -42,6 +46,9 @@ const defaultContextValue: LaymanContextType = {
     showTabs: true,
     viewId: "layman",
     ariaLabel: undefined,
+    rootClassName: undefined,
+    rootStyle: {},
+    renderToolbarFrame: ({children}: LaymanToolbarFrameProps) => children,
 };
 
 interface LaymanRuntimeProps {
@@ -58,6 +65,9 @@ interface LaymanRuntimeProps {
     toolbar?: LaymanToolbarConfig;
     viewId: string;
     ariaLabel?: string;
+    rootClassName?: string;
+    rootStyle?: React.CSSProperties;
+    renderToolbarFrame?: (props: LaymanToolbarFrameProps) => React.ReactNode;
     children: React.ReactNode;
 }
 
@@ -76,9 +86,13 @@ export const LaymanRuntime = ({
     toolbar = defaultLaymanToolbar,
     viewId,
     ariaLabel,
+    rootClassName,
+    rootStyle = {},
+    renderToolbarFrame = ({children}: LaymanToolbarFrameProps) => children,
     children,
 }: LaymanRuntimeProps) => {
     const [globalContainerSize, setGlobalContainerSize] = useState<Position>({top: 0, left: 0, width: 0, height: 0});
+    const [metrics, setMetrics] = useState(defaultLaymanViewMetrics);
     const [dropHighlightPosition, setDropHighlightPosition] = useState<Position>({top: 0, left: 0, width: 0, height: 0});
     const [draggedWindowTabs, setDraggedWindowTabs] = useState<LaymanContextType["draggedWindowTabs"]>([]);
     const [windowDragStartPosition, setWindowDragStartPosition] = useState({x: 0, y: 0});
@@ -90,6 +104,8 @@ export const LaymanRuntime = ({
             value={{
                 globalContainerSize,
                 setGlobalContainerSize,
+                metrics,
+                setMetrics,
                 layout: state.layout,
                 layoutDispatch: dispatch,
                 setDropHighlightPosition,
@@ -112,6 +128,9 @@ export const LaymanRuntime = ({
                 showTabs,
                 viewId,
                 ariaLabel,
+                rootClassName,
+                rootStyle,
+                renderToolbarFrame,
             }}
         >
             <LaymanDndProvider config={dnd}>

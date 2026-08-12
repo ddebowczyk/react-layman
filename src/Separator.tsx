@@ -4,15 +4,10 @@ import {deepEqual} from "./utils";
 import {SeparatorProps} from "./types";
 
 export function Separator({splitId, nodePosition, position, index, direction, path, separators}: SeparatorProps) {
-    const {canExecute, globalContainerSize, layoutDispatch} = useContext(LaymanContext);
+    const {canExecute, globalContainerSize, layoutDispatch, metrics} = useContext(LaymanContext);
     const [isDragging, setIsDragging] = useState(false);
 
-    // parseInt returns NaN (not null/undefined) when the CSS variable is missing,
-    // so the fallback must use || rather than ?? to actually take effect.
-    const separatorThickness =
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--separator-thickness").trim(), 10) || 8;
-    const toolbarHeight =
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--toolbar-height").trim(), 10) || 32;
+    const {separatorThickness, toolbarHeight} = metrics;
 
     const previousSeparator = separators!.find((sep) => {
         const prevPath = [...path];
@@ -125,6 +120,8 @@ export function Separator({splitId, nodePosition, position, index, direction, pa
             className={`layman-separator ${direction === "column" ? "layman-col-separator" : "layman-row-separator"}`}
             onMouseDown={handleMouseDown}
             onMouseUp={handleMouseUp}
+            data-layman-component="separator"
+            data-layman-split={splitId}
         >
             <div></div>
         </div>

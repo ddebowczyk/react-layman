@@ -48,6 +48,9 @@ export const Tab = ({tab, windowId, path, isSelected, onDelete, onMouseDown}: Ta
                 visibility: isDragging ? "hidden" : "visible",
                 width: isDragging ? 0 : "auto",
             }}
+            data-layman-component="tab"
+            data-layman-tab={tab.id}
+            data-layman-window={windowId}
         >
             <button className="tab-selector" disabled={selectDecision.kind === "deny"} onMouseDown={onMouseDown}>
                 {renderTab(tab, windowId, isSelected)}
@@ -73,7 +76,13 @@ export const SingleTab = ({dragRef, tab, windowId, onDelete, onMouseDown}: Singl
     const removeDecision = canExecute({type: "tab.remove", tabId: tab.id});
 
     return (
-        <div ref={dragRef} className={`tab selected`}>
+        <div
+            ref={dragRef}
+            className="tab selected"
+            data-layman-component="tab"
+            data-layman-tab={tab.id}
+            data-layman-window={windowId}
+        >
             <button className="tab-selector" disabled={selectDecision.kind === "deny"} onMouseDown={onMouseDown}>
                 {renderTab(tab, windowId, true)}
             </button>

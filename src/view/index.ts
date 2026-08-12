@@ -5,5 +5,7 @@ export type {
     LaymanEmptyProps,
     LaymanPaneProps,
     LaymanTabProps,
+    LaymanToolbarFrameProps,
     LaymanViewConfig,
 } from "./types";
+export type {LaymanTheme} from "./theme";

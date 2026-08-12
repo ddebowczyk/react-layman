@@ -95,9 +95,17 @@ function FloatingWindowResizeHandles({data}: {data: FloatingWindowData}) {
                 zIndex: data.zIndex + 1,
                 pointerEvents: "none",
             }}
+            data-layman-component="floating-resize-layer"
+            data-layman-window={data.id}
         >
             {resizeHandles.map((dir) => (
-                <div key={dir} className={`layman-floating-resize ${dir}`} onMouseDown={startResize(dir)}></div>
+                <div
+                    key={dir}
+                    className={`layman-floating-resize ${dir}`}
+                    onMouseDown={startResize(dir)}
+                    data-layman-component="floating-resize-handle"
+                    data-layman-resize-direction={dir}
+                ></div>
             ))}
         </div>
     );

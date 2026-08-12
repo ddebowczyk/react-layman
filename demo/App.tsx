@@ -79,7 +79,23 @@ export default function App() {
             </FloatingPanel>
             <LaymanView
                 controller={controller}
-                config={{viewId: "demo-workspace", ariaLabel: "Demo workspace", maxDepth, showTabs, toolbar}}
+                config={{
+                    viewId: "demo-workspace",
+                    ariaLabel: "Demo workspace",
+                    maxDepth,
+                    showTabs,
+                    toolbar,
+                    theme: {
+                        separatorHandleColor: "#c6d0f5",
+                        windowBackground: "#303446",
+                        toolbarBackground: "#292c3c",
+                        toolbarHoverBackground: "#414559",
+                        toolbarButtonHoverBackground: "#414559",
+                        tabTextColor: "#c6d0f5",
+                        closeTabColor: "#e7828488",
+                        accentColor: "#a6d189",
+                    },
+                }}
                 components={components}
             />
         </div>

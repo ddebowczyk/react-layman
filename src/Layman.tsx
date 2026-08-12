@@ -1,4 +1,4 @@
-import {useContext, useEffect, useMemo, useRef} from "react";
+import {useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef} from "react";
 import {WindowToolbar} from "./WindowToolbar";
 import {Window} from "./Window";
 import {LaymanLayout, LaymanPath, ToolBarProps, WindowProps, Position, SeparatorProps} from "./types";
@@ -7,34 +7,48 @@ import {Separator} from "./Separator";
 import {addressKey} from "./utils";
 import {FloatingResizeHandleLayer} from "./FloatingWindow";
 import {FloatingDockZones} from "./FloatingDockZones";
+import {readLaymanViewMetrics, sameLaymanViewMetrics} from "./view/metrics";
 
 /**
  * Entry point for Layman Window Manager
  */
 export function LaymanCanvas() {
-    const {globalContainerSize, setGlobalContainerSize, layout, renderNull, draggedWindowTabs, floatingWindows, viewId, ariaLabel} =
-        useContext(LaymanContext);
+    const {
+        globalContainerSize,
+        setGlobalContainerSize,
+        setMetrics,
+        layout,
+        renderNull,
+        draggedWindowTabs,
+        floatingWindows,
+        viewId,
+        ariaLabel,
+        rootClassName,
+        rootStyle,
+    } = useContext(LaymanContext);
     // Reference for parent div
     const laymanRef = useRef<HTMLDivElement | null>(null);
 
-    // Keep the shared container size in context up to date on window resize,
-    // since layout math throughout Layman is expressed in absolute pixels
-    // derived from this size rather than percentages.
-    useEffect(() => {
-        const updateContainerSize = () => {
-            if (laymanRef.current) {
-                const {top, left, width, height} = laymanRef.current.getBoundingClientRect();
-                setGlobalContainerSize({top, left, width, height});
-            }
-        };
+    const updateRootGeometry = useCallback(() => {
+        const root = laymanRef.current;
+        if (!root) return;
 
-        updateContainerSize();
-        window.addEventListener("resize", updateContainerSize);
+        const {top, left, width, height} = root.getBoundingClientRect();
+        setGlobalContainerSize({top, left, width, height});
+        const nextMetrics = readLaymanViewMetrics(root);
+        setMetrics((current) => (sameLaymanViewMetrics(current, nextMetrics) ? current : nextMetrics));
+    }, [setGlobalContainerSize, setMetrics]);
+
+    // Measure both the root rectangle and its local CSS metrics. This keeps
+    // layout geometry isolated when multiple themed Layman views share a page.
+    useLayoutEffect(() => {
+        updateRootGeometry();
+        window.addEventListener("resize", updateRootGeometry);
 
         return () => {
-            window.removeEventListener("resize", updateContainerSize);
+            window.removeEventListener("resize", updateRootGeometry);
         };
-    }, [setGlobalContainerSize]);
+    }, [rootStyle, updateRootGeometry]);
 
     // Window resize alone doesn't catch every case (e.g. the container growing
     // because a flex/grid parent changed), so a ResizeObserver watches the
@@ -43,19 +57,14 @@ export function LaymanCanvas() {
         if (!laymanRef.current) return;
         const laymanContainer = laymanRef.current;
 
-        const resizeObserver = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-                const {top, left, width, height} = entry.target.getBoundingClientRect();
-                setGlobalContainerSize({top, left, width, height});
-            }
-        });
+        const resizeObserver = new ResizeObserver(updateRootGeometry);
 
         resizeObserver.observe(laymanContainer);
 
         return () => {
             resizeObserver.disconnect();
         };
-    }, [globalContainerSize, laymanRef, setGlobalContainerSize]);
+    }, [updateRootGeometry]);
 
     // Derive component lists from layout
     const {toolbars, windows, separators} = useMemo(() => {
@@ -268,7 +277,16 @@ export function LaymanCanvas() {
     }, [globalContainerSize, draggedWindowTabs, layout, floatingWindows]);
 
     return (
-        <div ref={laymanRef} id={viewId} className="layman-root" role="application" aria-label={ariaLabel}>
+        <div
+            ref={laymanRef}
+            id={viewId}
+            className={["layman-root", rootClassName].filter(Boolean).join(" ")}
+            style={rootStyle}
+            role="application"
+            aria-label={ariaLabel}
+            data-layman-component="root"
+            data-layman-view={viewId}
+        >
             {/* Shown behind any floating windows when the tree is empty. */}
             {!layout && renderNull()}
             {toolbars.map((props) => (

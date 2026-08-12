@@ -25,9 +25,7 @@ const EDGE_ICONS: Record<Edge, () => JSX.Element> = {
 };
 
 /** Computes the container-relative rect for one of the 4 fixed edge zones. */
-function edgeZoneRect(edge: Edge, container: {width: number; height: number}): Position {
-    const inset =
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--anchor-inset").trim(), 10) || 16;
+function edgeZoneRect(edge: Edge, container: {width: number; height: number}, inset: number): Position {
     switch (edge) {
         case "top":
             return {top: inset, left: (container.width - EDGE_LONG) / 2, width: EDGE_LONG, height: EDGE_SHORT};
@@ -54,7 +52,7 @@ function edgeZoneRect(edge: Edge, container: {width: number; height: number}): P
  *  root of the layout, on that edge (splitting the root only if it isn't
  *  already a matching-direction split). */
 function FloatingEdgeZone({edge, container}: {edge: Edge; container: {width: number; height: number}}) {
-    const {layoutDispatch} = useContext(LaymanContext);
+    const {layoutDispatch, metrics} = useContext(LaymanContext);
     const [{isOver}, drop] = useDrop<DragData, void, {isOver: boolean}>(() => ({
         accept: [windowDragType],
         canDrop: (item) => "tabs" in item && isFloatingAddress(item.path),
@@ -74,7 +72,9 @@ function FloatingEdgeZone({edge, container}: {edge: Edge; container: {width: num
         <div
             ref={drop}
             className={`layman-floating-anchor ${edge} ${isOver ? "over" : ""}`}
-            style={{position: "absolute", ...edgeZoneRect(edge, container)}}
+            style={{position: "absolute", ...edgeZoneRect(edge, container, metrics.dockZoneInset)}}
+            data-layman-component="dock-zone"
+            data-layman-dock-edge={edge}
         >
             <Icon />
         </div>
@@ -113,7 +113,13 @@ function FloatingCenterZone({windowId, position}: {windowId: string; position: P
         ...size,
     };
     return (
-        <div ref={drop} className={`layman-floating-anchor center ${isOver ? "over" : ""}`} style={{position: "absolute", ...rect}}>
+        <div
+            ref={drop}
+            className={`layman-floating-anchor center ${isOver ? "over" : ""}`}
+            style={{position: "absolute", ...rect}}
+            data-layman-component="dock-zone"
+            data-layman-dock-edge="center"
+        >
             <UnfloatIcon />
         </div>
     );

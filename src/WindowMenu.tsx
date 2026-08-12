@@ -20,14 +20,9 @@ interface WindowMenuProps {
  * toolbar configuration defines the entire control set in its popover.
  */
 export function WindowMenu({windowId, position, tabs, selectedTabId, open, setOpen, controls}: WindowMenuProps) {
-    const {canExecute, layoutDispatch, renderTab} = useContext(LaymanContext);
+    const {canExecute, layoutDispatch, renderTab, metrics} = useContext(LaymanContext);
 
-    // parseInt returns NaN (not null/undefined) when the CSS variable is missing,
-    // so the fallback must use || rather than ?? to actually take effect.
-    const cssToolbarHeight =
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--toolbar-height").trim(), 10) || 64;
-    const separatorThickness =
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--separator-thickness").trim(), 10) || 8;
+    const {toolbarHeight: cssToolbarHeight, separatorThickness} = metrics;
 
     const buttonSize = cssToolbarHeight;
 
@@ -40,6 +35,8 @@ export function WindowMenu({windowId, position, tabs, selectedTabId, open, setOp
                 left: position.left + position.width - buttonSize - separatorThickness,
                 zIndex: 8,
             }}
+            data-layman-component="window-menu"
+            data-layman-window={windowId}
         >
             <ToolbarButton
                 className="toolbar-button layman-window-menu-trigger"
