@@ -15,8 +15,19 @@ import {TabData} from "./TabData";
 import {LaymanReducer} from "./LaymanReducer";
 import {loadState, saveState} from "./persistence";
 
+let generatedViewCount = 0;
+
+function createViewId() {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+        return `layman-${crypto.randomUUID()}`;
+    }
+    generatedViewCount += 1;
+    return `layman-${generatedViewCount}`;
+}
+
 // Define default values for the context
 const defaultContextValue: LaymanContextType = {
+    viewId: "layman-unmounted",
     globalContainerSize: {top: 0, left: 0, width: 0, height: 0},
     setGlobalContainerSize: () => {},
     layout: {tabs: []},
@@ -52,6 +63,8 @@ type LaymanProviderProps = {
     maxDepth?: number;
     // Show/hide the window tab row. Default: true.
     showTabs?: boolean;
+    // Optional diagnostic and DOM-isolation ID. Generated once when omitted.
+    viewId?: string;
     children: React.ReactNode;
 };
 
@@ -67,8 +80,12 @@ export const LaymanProvider = ({
     storageKey,
     maxDepth = Infinity,
     showTabs = true,
+    viewId,
     children,
 }: LaymanProviderProps) => {
+    const generatedViewId = useRef<string | null>(null);
+    if (generatedViewId.current === null) generatedViewId.current = createViewId();
+    const resolvedViewId = viewId ?? generatedViewId.current;
     const [{layout, floatingWindows}, layoutDispatch] = useReducer(
         LaymanReducer,
         {layout: initialLayout, floatingWindows: []},
@@ -118,6 +135,7 @@ export const LaymanProvider = ({
     return (
         <LaymanContext.Provider
             value={{
+                viewId: resolvedViewId,
                 globalContainerSize,
                 setGlobalContainerSize,
                 layout,
@@ -143,7 +161,6 @@ export const LaymanProvider = ({
         >
             <DndProvider backend={HTML5Backend}>
                 <DropHighlight position={dropHighlightPosition} isDragging={globalDragging} />
-                <div id="drag-window-border"></div>
                 {children}
             </DndProvider>
         </LaymanContext.Provider>

@@ -23,6 +23,8 @@ import {
     UnfloatIcon,
 } from "./Icons";
 import {addressKey, deepEqual, isFloatingAddress} from "./utils";
+import {useLaymanView} from "./LaymanViewContext";
+import {readLaymanStyleNumber} from "./viewMetrics";
 
 function usePrevious(value: number) {
     const ref = useRef(0);
@@ -47,6 +49,7 @@ export function WindowToolbar({path, position: rawPosition, tabs, selectedIndex,
         maxDepth,
         showTabs,
     } = useContext(LaymanContext);
+    const {rootRef} = useLaymanView();
     const tabContainerRef = useRef<HTMLDivElement>(null);
     const isFloating = isFloatingAddress(path);
     // A maximized window overrides its layout position to fill the whole container.
@@ -60,12 +63,10 @@ export function WindowToolbar({path, position: rawPosition, tabs, selectedIndex,
     const previousTabCount = usePrevious(tabs.length);
     // parseInt returns NaN (not null/undefined) when the CSS variable is missing,
     // so the fallback must use || rather than ?? to actually take effect.
-    const cssToolbarHeight =
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--toolbar-height").trim(), 10) || 64;
+    const cssToolbarHeight = readLaymanStyleNumber(rootRef.current, "--toolbar-height", 64);
     // When the tab row is hidden the toolbar occupies no vertical space.
     const windowToolbarHeight = showTabs ? cssToolbarHeight : 0;
-    const separatorThickness =
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--separator-thickness").trim(), 10) || 8;
+    const separatorThickness = readLaymanStyleNumber(rootRef.current, "--separator-thickness", 8);
     // Splits create a deeper window (path.length + 1); block them at the limit.
     // Floating windows are always single-pane, so splitting never applies.
     const atMaxDepth = isFloating || path.length >= maxDepth;

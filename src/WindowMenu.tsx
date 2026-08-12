@@ -4,6 +4,8 @@ import {ToolbarButton} from "./ToolbarButton";
 import {TabData} from "./TabData";
 import {AddIcon, CloseIcon, EllipsisIcon} from "./Icons";
 import {Position, WindowAddress} from "./types";
+import {useLaymanView} from "./LaymanViewContext";
+import {readLaymanStyleNumber} from "./viewMetrics";
 
 interface WindowMenuProps {
     path: WindowAddress;
@@ -24,13 +26,12 @@ interface WindowMenuProps {
  */
 export function WindowMenu({path, position, tabs, selectedIndex, open, setOpen, controlButtons}: WindowMenuProps) {
     const {layoutDispatch, renderTab, mutable} = useContext(LaymanContext);
+    const {rootRef} = useLaymanView();
 
     // parseInt returns NaN (not null/undefined) when the CSS variable is missing,
     // so the fallback must use || rather than ?? to actually take effect.
-    const cssToolbarHeight =
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--toolbar-height").trim(), 10) || 64;
-    const separatorThickness =
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--separator-thickness").trim(), 10) || 8;
+    const cssToolbarHeight = readLaymanStyleNumber(rootRef.current, "--toolbar-height", 64);
+    const separatorThickness = readLaymanStyleNumber(rootRef.current, "--separator-thickness", 8);
 
     const buttonSize = cssToolbarHeight;
 
