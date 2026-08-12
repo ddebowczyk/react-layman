@@ -1,2 +1,2 @@
 export { createLaymanWorkspaceBridge } from './bridge';
-export type { LaymanModuleHost, LaymanSnapshotPort, LaymanWorkspaceBridge, LaymanWorkspaceBridgeEvent, LaymanWorkspaceBridgeOptions, LaymanWorkspaceInspection, LaymanWorkspaceUnsubscribe, LaymanWorkspaceUpdate, } from './types';
+export type { LaymanModuleHost, LaymanSnapshotSaveRequest, LaymanSnapshotSaveResult, LaymanSnapshotPort, LaymanWorkspaceBridge, LaymanWorkspaceBridgeEvent, LaymanWorkspaceBridgeOptions, LaymanWorkspaceInspection, LaymanWorkspaceUnsubscribe, LaymanWorkspaceUpdate, } from './types';

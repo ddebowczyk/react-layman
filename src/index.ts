@@ -50,6 +50,8 @@ export type {
 export {createLaymanWorkspaceBridge} from "./integration";
 export type {
     LaymanModuleHost,
+    LaymanSnapshotSaveRequest,
+    LaymanSnapshotSaveResult,
     LaymanSnapshotPort,
     LaymanWorkspaceBridge,
     LaymanWorkspaceBridgeEvent,

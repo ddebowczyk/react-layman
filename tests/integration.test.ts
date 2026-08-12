@@ -2,7 +2,11 @@ import {describe, expect, it, vi} from "vitest";
 import {createLaymanController} from "../src/controller";
 import {createLaymanWorkspaceBridge} from "../src/integration";
 import {serializeState} from "../src/layoutSnapshot";
-import type {LaymanSnapshotPort, LaymanWorkspaceUpdate} from "../src/integration";
+import type {
+    LaymanSnapshotPort,
+    LaymanSnapshotSaveRequest,
+    LaymanWorkspaceUpdate,
+} from "../src/integration";
 import type {LaymanState} from "../src/core";
 import {floatingWindow, tab, window} from "./helpers";
 
@@ -22,15 +26,27 @@ function update(state: LaymanState, revision: number, originId = "remote"): Laym
 }
 
 function snapshotPort(initial?: LaymanWorkspaceUpdate): LaymanSnapshotPort & {
+    requests: LaymanSnapshotSaveRequest[];
     saves: LaymanWorkspaceUpdate[];
     publish(update: LaymanWorkspaceUpdate): void;
 } {
     let receive: ((update: LaymanWorkspaceUpdate) => void) | undefined;
+    const requests: LaymanSnapshotSaveRequest[] = [];
     const saves: LaymanWorkspaceUpdate[] = [];
     return {
+        requests,
         saves,
         load: vi.fn(async () => initial),
-        save: vi.fn(async (_workspaceId, next) => saves.push(next)),
+        compareAndSave: vi.fn(async (_workspaceId, request) => {
+            requests.push(request);
+            const next = {
+                revision: request.expectedRevision + 1,
+                originId: request.originId,
+                snapshot: request.snapshot,
+            };
+            saves.push(next);
+            return {status: "saved", update: next} as const;
+        }),
         subscribe: vi.fn((_workspaceId, next) => {
             receive = next;
             return () => {
@@ -89,9 +105,47 @@ describe("Layman workspace bridge", () => {
         expect(controller.dispatch({type: "tab.select", tabId: "tab-terminal"}, {origin: "user"})).toMatchObject({status: "applied"});
         await bridge.flush();
 
+        expect(port.requests.map((entry) => entry.expectedRevision)).toEqual([0, 1]);
         expect(port.saves.map((entry) => entry.revision)).toEqual([1, 2]);
         expect(port.saves.every((entry) => entry.originId === "view-a")).toBe(true);
         expect(port.saves[1]?.snapshot).toMatchObject({schemaVersion: 2});
+    });
+
+    it("adopts the host record after a compare-and-save conflict without saving stale local work", async () => {
+        const port = snapshotPort();
+        const events: string[] = [];
+        port.compareAndSave = vi.fn(async () => ({
+            status: "conflict",
+            current: update(workspace("remote"), 2, "view-b"),
+        }));
+        const controller = createLaymanController({state: workspace()});
+        const bridge = createLaymanWorkspaceBridge({
+            workspaceId: "main",
+            originId: "view-a",
+            controller,
+            snapshots: port,
+            onEvent: (event) => events.push(event.type),
+        });
+        await bridge.start();
+
+        bridge.dispatch({
+            type: "tab.insert",
+            tab: {id: "tab-terminal", title: "Terminal", data: {moduleId: "terminal"}},
+            target: {kind: "window", windowId: "window-main"},
+            placement: "center",
+        });
+        bridge.dispatch({type: "tab.select", tabId: "tab-terminal"});
+        await bridge.flush();
+
+        expect(port.compareAndSave).toHaveBeenCalledOnce();
+        expect(port.compareAndSave).toHaveBeenCalledWith(
+            "main",
+            expect.objectContaining({expectedRevision: 0, originId: "view-a"})
+        );
+        expect(bridge.inspect().revision).toBe(2);
+        expect(controller.inspect().windows[0]?.tabs[0]?.data).toEqual({moduleId: "remote"});
+        expect(events).toContain("save-conflicted");
+        expect(events).not.toContain("save-failed");
     });
 
     it("ignores echoed and stale updates, then applies a newer external update without saving it again", async () => {
@@ -173,7 +227,7 @@ describe("Layman workspace bridge", () => {
 
     it("reports persistence and subscription failures without discarding state", async () => {
         const port = snapshotPort();
-        port.save = vi.fn(async () => {
+        port.compareAndSave = vi.fn(async () => {
             throw new Error("disk is unavailable");
         });
         port.subscribe = vi.fn(() => {
