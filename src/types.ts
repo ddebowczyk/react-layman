@@ -113,6 +113,9 @@ export interface LaymanContextType {
     ariaLabel?: string;
     rootClassName?: string;
     rootStyle: CSSProperties;
+    /** Local target for this view's dragged-window border portal. */
+    dragBorderElement: HTMLDivElement | null;
+    setDragBorderElement: Dispatch<SetStateAction<HTMLDivElement | null>>;
     renderToolbarFrame: (props: LaymanToolbarFrameProps) => ReactNode;
 }
 

@@ -25,8 +25,15 @@ function useControllerState<TData extends JsonValue>(controller: LaymanControlle
     );
 }
 
+function requireViewId(viewId: unknown): asserts viewId is string {
+    if (typeof viewId !== "string" || viewId.trim().length === 0) {
+        throw new Error("[Layman] viewId must be a non-empty string");
+    }
+}
+
 /** Renders a controlled Layman workspace through the public controller contract. */
 export function LaymanView<TData extends JsonValue>({controller, config, components, className, style}: LaymanViewProps<TData>) {
+    requireViewId(config.viewId);
     const state = useControllerState(controller);
     const inspection = controller.inspect();
     const {Pane, Tab, Empty, ToolbarFrame} = components;

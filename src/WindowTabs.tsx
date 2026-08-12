@@ -55,7 +55,7 @@ export const Tab = ({tab, windowId, path, isSelected, onDelete, onMouseDown}: Ta
             <button className="tab-selector" disabled={selectDecision.kind === "deny"} onMouseDown={onMouseDown}>
                 {renderTab(tab, windowId, isSelected)}
             </button>
-            <button className="close-tab" disabled={removeDecision.kind === "deny"} onClick={onDelete}>
+            <button aria-label={`Close ${tab.title}`} className="close-tab" disabled={removeDecision.kind === "deny"} onClick={onDelete}>
                 <CloseIcon />
             </button>
         </div>
@@ -86,7 +86,7 @@ export const SingleTab = ({dragRef, tab, windowId, onDelete, onMouseDown}: Singl
             <button className="tab-selector" disabled={selectDecision.kind === "deny"} onMouseDown={onMouseDown}>
                 {renderTab(tab, windowId, true)}
             </button>
-            <button className="close-tab" disabled={removeDecision.kind === "deny"} onClick={onDelete}>
+            <button aria-label={`Close ${tab.title}`} className="close-tab" disabled={removeDecision.kind === "deny"} onClick={onDelete}>
                 <CloseIcon />
             </button>
         </div>

@@ -25,6 +25,7 @@ export function LaymanCanvas() {
         ariaLabel,
         rootClassName,
         rootStyle,
+        setDragBorderElement,
     } = useContext(LaymanContext);
     // Reference for parent div
     const laymanRef = useRef<HTMLDivElement | null>(null);
@@ -279,7 +280,6 @@ export function LaymanCanvas() {
     return (
         <div
             ref={laymanRef}
-            id={viewId}
             className={["layman-root", rootClassName].filter(Boolean).join(" ")}
             style={rootStyle}
             role="application"
@@ -287,6 +287,7 @@ export function LaymanCanvas() {
             data-layman-component="root"
             data-layman-view={viewId}
         >
+            <div ref={setDragBorderElement} data-layman-component="drag-border-layer" />
             {/* Shown behind any floating windows when the tree is empty. */}
             {!layout && renderNull()}
             {toolbars.map((props) => (

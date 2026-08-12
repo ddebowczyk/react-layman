@@ -61,7 +61,7 @@ state before replacing it when that is required.
 
 | API | Contract |
 | --- | --- |
-| `LaymanView`, `LaymanViewProps`, `LaymanViewConfig` | Controlled visual workspace. `viewId` is required. |
+| `LaymanView`, `LaymanViewProps`, `LaymanViewConfig` | Controlled visual workspace. `viewId` is required, non-empty, and unique in the host document. |
 | `LaymanComponents` | Required `Pane` and `Tab` slots; optional `Empty` and `ToolbarFrame` slots. |
 | `LaymanPaneProps`, `LaymanTabProps`, `LaymanEmptyProps`, `LaymanToolbarFrameProps` | Slot inputs with the current tab or toolbar window, controller, and dispatcher. |
 | `LaymanTheme` | Root-scoped visual tokens. Numeric length values become pixels. |

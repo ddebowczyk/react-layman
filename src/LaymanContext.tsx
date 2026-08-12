@@ -48,6 +48,8 @@ const defaultContextValue: LaymanContextType = {
     ariaLabel: undefined,
     rootClassName: undefined,
     rootStyle: {},
+    dragBorderElement: null,
+    setDragBorderElement: () => {},
     renderToolbarFrame: ({children}: LaymanToolbarFrameProps) => children,
 };
 
@@ -98,6 +100,7 @@ export const LaymanRuntime = ({
     const [windowDragStartPosition, setWindowDragStartPosition] = useState({x: 0, y: 0});
     const [globalDragging, setGlobalDragging] = useState(false);
     const [maximizedWindowId, setMaximizedWindowId] = useState<string | null>(null);
+    const [dragBorderElement, setDragBorderElement] = useState<HTMLDivElement | null>(null);
 
     return (
         <LaymanContext.Provider
@@ -130,12 +133,13 @@ export const LaymanRuntime = ({
                 ariaLabel,
                 rootClassName,
                 rootStyle,
+                dragBorderElement,
+                setDragBorderElement,
                 renderToolbarFrame,
             }}
         >
             <LaymanDndProvider config={dnd}>
                 <DropHighlight position={dropHighlightPosition} isDragging={globalDragging} />
-                <div id={`${viewId}-drag-window-border`}></div>
                 {children}
             </LaymanDndProvider>
         </LaymanContext.Provider>

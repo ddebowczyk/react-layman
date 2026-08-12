@@ -16,7 +16,7 @@ export function Window({windowId, position: rawPosition, path, tab, isSelected, 
         showTabs,
         layoutDispatch,
         canExecute,
-        viewId,
+        dragBorderElement,
     } = useContext(LaymanContext);
 
     const isFloating = isFloatingAddress(path);
@@ -71,22 +71,6 @@ export function Window({windowId, position: rawPosition, path, tab, isSelected, 
         }
     }, [clientOffset, isDragging, windowDragStartPosition.x, windowDragStartPosition.y]);
 
-    const [portalElement, setPortalElement] = useState<HTMLElement | null>(null);
-
-    // Check for the portal target element when the component mounts
-    useEffect(() => {
-        const element = document.getElementById(`${viewId}-drag-window-border`);
-        if (element) {
-            setPortalElement(element);
-        } else {
-            console.error("Element with id 'drag-window-border' not found.");
-        }
-    }, [viewId]);
-
-    if (!portalElement) {
-        return null; // Don't render until portal element is available
-    }
-
     const adjustedWindowPosition: Position = {
         top: position.top + windowToolbarHeight + separatorThickness / 2 + currentMousePosition.top,
         left: position.left * scale + currentMousePosition.left,
@@ -95,8 +79,8 @@ export function Window({windowId, position: rawPosition, path, tab, isSelected, 
     };
 
     const borderPosition: Position = {
-        top: position.top + (windowToolbarHeight / 2) * scale + currentMousePosition.top + globalContainerSize.top,
-        left: position.left * scale + currentMousePosition.left + globalContainerSize.left,
+        top: position.top + (windowToolbarHeight / 2) * scale + currentMousePosition.top,
+        left: position.left * scale + currentMousePosition.left,
         width: position.width - separatorThickness + 2, // +2 for thickness of the border itself
         height: position.height - separatorThickness / 2,
     };
@@ -129,6 +113,7 @@ export function Window({windowId, position: rawPosition, path, tab, isSelected, 
         >
             {isDragging &&
                 !isFloating &&
+                dragBorderElement &&
                 createPortal(
                     <div
                         style={{
@@ -143,7 +128,7 @@ export function Window({windowId, position: rawPosition, path, tab, isSelected, 
                             userSelect: "none",
                         }}
                     ></div>,
-                    document.getElementById(`${viewId}-drag-window-border`)!
+                    dragBorderElement
                 )}
             {renderPane(tab, windowId, isSelected)}
         </div>
