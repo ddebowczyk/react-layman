@@ -5,15 +5,18 @@ contract uses stable IDs, JSON-safe state, typed commands, and explicit host
 control. The React view does not own persistence, native windows, or module
 life cycles.
 
-Version `0.4.0` is a breaking controlled-view release. If you use `v0.3.x`,
-read the [migration guide](docs/guides/migrate-to-controlled-view.md) before
-upgrading.
+Version `0.5.0` requires React and React DOM 19. It keeps the controlled-view
+API introduced in `0.4.0`. If you use `v0.3.x`, read the
+[migration guide](docs/guides/migrate-to-controlled-view.md) before upgrading.
 
 ## Install
 
 ```sh
 npm install react-layman
 ```
+
+The application must provide `react` and `react-dom` version 19 as peer
+dependencies.
 
 Import the bundled stylesheet once in the application entry point:
 
@@ -170,7 +173,7 @@ npm run check:package
 
 The package-consumer fixture imports every documented root export from emitted
 declarations. `check:package` verifies the packed declaration and stylesheet
-files. See [the 0.4.0 release notes](docs/releases/0.4.0.md) for the final
+files. See [the 0.5.0 release notes](docs/releases/0.5.0.md) for the final
 native-app acceptance gate.
 
 ## License

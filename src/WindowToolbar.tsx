@@ -153,7 +153,7 @@ export function WindowToolbar({windowId, path, position: rawPosition, tabs, sele
                             />
                         )}
                     </div>
-                    <div ref={drag} className="drag-area" onMouseDown={(event) => setDragStartPosition({x: event.clientX, y: event.clientY})}></div>
+                    <div ref={(element) => void drag(element)} className="drag-area" onMouseDown={(event) => setDragStartPosition({x: event.clientX, y: event.clientY})}></div>
                     <div className="toolbar-button-container">
                         <WindowToolbarWidgets items={items} runtime={runtime} surface="bar" />
                         {hasOverflow && (

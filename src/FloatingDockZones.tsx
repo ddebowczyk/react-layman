@@ -1,4 +1,4 @@
-import {useContext} from "react";
+import {useContext, type ReactElement} from "react";
 import {useDragLayer, useDrop} from "react-dnd";
 import type {Identifier} from "dnd-core";
 import {windowDragType} from "./dnd/items";
@@ -19,7 +19,7 @@ const CENTER_ZONE_MAX = 200; // Cap on the center zone's size for large windows
 
 type Edge = "top" | "bottom" | "left" | "right";
 
-const EDGE_ICONS: Record<Edge, () => JSX.Element> = {
+const EDGE_ICONS: Record<Edge, () => ReactElement> = {
     top: TopSplitIcon,
     bottom: BottomSplitIcon,
     left: LeftSplitIcon,
@@ -79,7 +79,7 @@ function FloatingEdgeZone({edge, container}: {edge: Edge; container: {width: num
     const Icon = EDGE_ICONS[edge];
     return (
         <div
-            ref={drop}
+            ref={(element) => void drop(element)}
             className={`layman-floating-anchor ${edge} ${isOver ? "over" : ""}`}
             style={{position: "absolute", ...edgeZoneRect(edge, container, metrics.dockZoneInset)}}
             data-layman-component="dock-zone"
@@ -122,7 +122,7 @@ function FloatingCenterZone({windowId, position}: {windowId: string; position: P
     };
     return (
         <div
-            ref={drop}
+            ref={(element) => void drop(element)}
             className={`layman-floating-anchor center ${isOver ? "over" : ""}`}
             style={{position: "absolute", ...rect}}
             data-layman-component="dock-zone"

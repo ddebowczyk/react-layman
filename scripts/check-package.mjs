@@ -20,6 +20,9 @@ function pack() {
 
 if (packageJson.exports?.["."]?.types !== "./lib/index.d.ts") fail("root declaration export is missing");
 if (packageJson.exports?.["./styles.css"] !== "./lib/index.css") fail("stylesheet export is missing");
+for (const [name, range] of Object.entries({react: "^19.0.0", "react-dom": "^19.0.0"})) {
+    if (packageJson.peerDependencies?.[name] !== range) fail(`${name} peer dependency must be ${range}`);
+}
 
 const packed = pack();
 const paths = new Set(packed.files.map((file) => file.path));

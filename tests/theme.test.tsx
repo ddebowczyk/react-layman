@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
+import {act} from "react";
 import {createRoot, type Root} from "react-dom/client";
-import {act} from "react-dom/test-utils";
 import {createDragDropManager} from "dnd-core";
 import {TestBackend} from "react-dnd-test-backend";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";

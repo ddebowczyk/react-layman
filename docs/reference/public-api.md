@@ -1,7 +1,8 @@
 # Public API reference
 
 This reference covers the stable `react-layman` root export and the stable
-`react-layman/styles.css` stylesheet export for `0.4.0`. The
+`react-layman/styles.css` stylesheet export for `0.5.0`. It requires React
+and React DOM 19. The
 [`tests/package-consumer`](../../tests/package-consumer) fixture type-checks
 every name listed here against the emitted `lib/index.d.ts` declaration file.
 

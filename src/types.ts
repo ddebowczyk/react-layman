@@ -1,4 +1,4 @@
-import type {CSSProperties, Dispatch, ReactNode, SetStateAction} from "react";
+import type {CSSProperties, Dispatch, ReactElement, ReactNode, SetStateAction} from "react";
 import type {LaymanCommand} from "./core/commands";
 import type {LaymanInspection} from "./core/inspection";
 import type {
@@ -81,8 +81,8 @@ export interface WindowProps {
     zIndex?: number;
 }
 
-export type PaneRenderer = (tab: LaymanTab, windowId: string, selected: boolean) => JSX.Element;
-export type TabRenderer = (tab: LaymanTab, windowId: string, selected: boolean) => string | JSX.Element;
+export type PaneRenderer = (tab: LaymanTab, windowId: string, selected: boolean) => ReactElement;
+export type TabRenderer = (tab: LaymanTab, windowId: string, selected: boolean) => string | ReactElement;
 
 export interface LaymanContextType {
     globalContainerSize: Position;
@@ -104,7 +104,7 @@ export interface LaymanContextType {
     canExecute: LaymanCommandAuthorizer;
     toolbar: LaymanToolbarConfig;
     inspection: LaymanInspection;
-    renderNull: () => JSX.Element;
+    renderNull: () => ReactElement;
     maximizedWindowId: string | null;
     setMaximizedWindowId: Dispatch<SetStateAction<string | null>>;
     floatingWindows: readonly FloatingWindowData[];

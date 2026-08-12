@@ -106,7 +106,7 @@ export function WindowDropTarget({windowId, path, position, placement}: WindowDr
 
     return (
         <div
-            ref={drop}
+            ref={(element) => void drop(element)}
             className={`layman-window-drop-target ${placement}`}
             data-layman-component="drop-target"
             data-layman-drop-target={handlerId ?? undefined}

@@ -42,7 +42,7 @@ export const Tab = ({tab, windowId, path, isSelected, onDelete, onSelect}: TabPr
 
     return (
         <div
-            ref={drag}
+            ref={(element) => void drag(element)}
             className={`tab ${isSelected ? "selected" : ""}`}
             style={{
                 visibility: isDragging ? "hidden" : "visible",
@@ -78,7 +78,7 @@ export const SingleTab = ({dragRef, tab, windowId, onDelete, onMouseDown, onSele
 
     return (
         <div
-            ref={dragRef}
+            ref={(element) => void dragRef(element)}
             className="tab selected"
             data-layman-component="tab"
             data-layman-tab={tab.id}

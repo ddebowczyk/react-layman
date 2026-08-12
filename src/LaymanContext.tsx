@@ -60,7 +60,7 @@ interface LaymanRuntimeProps {
     canExecute: LaymanContextType["canExecute"];
     renderPane: PaneRenderer;
     renderTab: TabRenderer;
-    renderNull: () => JSX.Element;
+    renderNull: () => React.ReactElement;
     dnd?: LaymanDndConfig;
     maxDepth: number;
     showTabs: boolean;

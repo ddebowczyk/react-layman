@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
-import {useEffect} from "react";
+import {act, useEffect} from "react";
 import {createRoot, type Root} from "react-dom/client";
-import {act} from "react-dom/test-utils";
 import {DndProvider, useDrag, useDragDropManager} from "react-dnd";
 import {createDragDropManager, type DragDropManager, type Identifier} from "dnd-core";
 import {TestBackend, type ITestBackend} from "react-dnd-test-backend";
@@ -80,7 +79,7 @@ function TabDragSource({onHandler}: {onHandler: (handlerId: Identifier) => void}
     useEffect(() => {
         if (handlerId) onHandler(handlerId);
     }, [handlerId, onHandler]);
-    return <div ref={drag}>tab drag source</div>;
+    return <div ref={(element) => void drag(element)}>tab drag source</div>;
 }
 
 function WindowDragSource({onHandler}: {onHandler: (handlerId: Identifier) => void}) {
@@ -95,7 +94,7 @@ function WindowDragSource({onHandler}: {onHandler: (handlerId: Identifier) => vo
     useEffect(() => {
         if (handlerId) onHandler(handlerId);
     }, [handlerId, onHandler]);
-    return <div ref={drag}>window drag source</div>;
+    return <div ref={(element) => void drag(element)}>window drag source</div>;
 }
 
 function FloatingWindowDragSource({onHandler}: {onHandler: (handlerId: Identifier) => void}) {
@@ -115,7 +114,7 @@ function FloatingWindowDragSource({onHandler}: {onHandler: (handlerId: Identifie
     useEffect(() => {
         if (handlerId) onHandler(handlerId);
     }, [handlerId, onHandler]);
-    return <div ref={drag}>floating window drag source</div>;
+    return <div ref={(element) => void drag(element)}>floating window drag source</div>;
 }
 
 function dragToCenter(backend: ITestBackend, sourceId: Identifier, targetId: Identifier) {

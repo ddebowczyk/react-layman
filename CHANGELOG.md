@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.5.0] - Unreleased
+
+### React compatibility
+
+- Require React and React DOM 19. React 18 is no longer a supported host.
+
+### Test runtime
+
+- Import test `act` from `react`, as required by React 19.
+
 ## [0.4.0] - Unreleased
 
 ### Breaking
@@ -30,4 +40,5 @@ All notable changes to this project are documented in this file.
 - Reject malformed snapshots and preserve identity for no-op and rejected
   transitions.
 
+[0.5.0]: https://github.com/Jeshwin/react-layman/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Jeshwin/react-layman/compare/v0.3.0...v0.4.0

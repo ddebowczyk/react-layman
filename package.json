@@ -1,6 +1,6 @@
 {
     "name": "react-layman",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "engines": {
         "node": ">=20.19.0 <27"
     },
@@ -64,8 +64,8 @@
         "@testing-library/react": "^16.3.2",
         "@testing-library/user-event": "^14.6.4",
         "@types/node": "^25.2.3",
-        "@types/react": "^18.2.66",
-        "@types/react-dom": "^18.2.22",
+        "@types/react": "^19.2.18",
+        "@types/react-dom": "^19.2.4",
         "@typescript-eslint/eslint-plugin": "^7.2.0",
         "@typescript-eslint/parser": "^7.2.0",
         "@vitejs/plugin-react-swc": "^4.3.1",
@@ -74,9 +74,9 @@
         "eslint-plugin-react-hooks": "^4.6.0",
         "eslint-plugin-react-refresh": "^0.4.6",
         "jsdom": "^29.1.1",
-        "react": "^18",
+        "react": "^19.2.8",
         "react-dnd-test-backend": "^16.0.1",
-        "react-dom": "^18",
+        "react-dom": "^19.2.8",
         "typescript": "^5.7.2",
         "vite": "^8.0.16",
         "vite-plugin-dts": "^4.3.0",
@@ -84,7 +84,7 @@
         "vitest": "^4.1.8"
     },
     "peerDependencies": {
-        "react": "^18",
-        "react-dom": "^18"
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0"
     }
 }
