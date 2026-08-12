@@ -5,7 +5,7 @@ export { createLaymanNode, createLaymanTab, createLaymanWindow } from './createL
 export { createLaymanController, useLaymanController } from './controller';
 export type { LaymanCommandAuthorizer, LaymanCommandDispatcher, LaymanControllerDispatch, LaymanCommandMeta, LaymanCommandOrigin, LaymanController, LaymanControllerOptions, LaymanControllerTransition, LaymanTransitionListener, UseLaymanControllerOptions, } from './controller';
 export { createLaymanWorkspaceBridge } from './integration';
-export type { LaymanModuleHost, LaymanSnapshotPort, LaymanWorkspaceBridge, LaymanWorkspaceBridgeEvent, LaymanWorkspaceBridgeOptions, LaymanWorkspaceInspection, LaymanWorkspaceUnsubscribe, LaymanWorkspaceUpdate, } from './integration';
+export type { LaymanModuleHost, LaymanSnapshotSaveRequest, LaymanSnapshotSaveResult, LaymanSnapshotPort, LaymanWorkspaceBridge, LaymanWorkspaceBridgeEvent, LaymanWorkspaceBridgeOptions, LaymanWorkspaceInspection, LaymanWorkspaceUnsubscribe, LaymanWorkspaceUpdate, } from './integration';
 export type { LaymanDndConfig } from './dnd/types';
 export type { LaymanInteractionContext, LaymanInteractionDecision, LaymanInteractionPolicy, LaymanInteractionViewConfig, } from './controller';
 export { LaymanView } from './view';

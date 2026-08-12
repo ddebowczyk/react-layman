@@ -8,13 +8,13 @@ plugins.
 The public `createLaymanWorkspaceBridge` connects one controller to two
 application-owned ports:
 
-- `LaymanSnapshotPort` loads, saves, and subscribes to versioned snapshots.
+- `LaymanSnapshotPort` loads, compare-and-saves, and subscribes to snapshots.
 - `LaymanModuleHost` opens, focuses, and closes native or embedded modules.
 
 The bridge gives the view layer one typed setup, inspection, and control API.
-It serializes every applied local transition, ignores its echoed writes, and
-rejects stale or invalid remote snapshots without replacing the last valid
-layout.
+It serializes applied local transitions in confirmation order, ignores echoed
+writes, and rejects stale or invalid remote snapshots without replacing the
+last valid layout.
 
 ## Define the Tauri ports
 
@@ -37,9 +37,28 @@ type LaymanWorkspaceUpdate = {
 };
 ```
 
-`snapshot` is the exact versioned value from `serializeState`. Storage must
-reject a write whose revision is not newer than its current record. This makes
-the application host the authority for concurrent writes.
+`snapshot` is the exact versioned value from `serializeState`. A save request
+contains the last confirmed `expectedRevision`; `0` means no stored record.
+Storage must perform compare-and-save atomically:
+
+```ts
+type LaymanSnapshotSaveRequest = {
+    expectedRevision: number;
+    originId: string;
+    snapshot: LaymanSerializedState;
+};
+
+type LaymanSnapshotSaveResult =
+    | {status: "saved"; update: LaymanWorkspaceUpdate}
+    | {status: "conflict"; current: LaymanWorkspaceUpdate};
+```
+
+On `saved`, the record revision must be greater than `expectedRevision` and
+the origin must match the request. On `conflict`, return the current record;
+do not throw a normal revision conflict. The bridge replaces its local layout
+with that record, cancels queued writes from the rejected layout, and emits
+`save-conflicted`. It does not retry or merge snapshots. The application owns
+any explicit conflict-resolution policy.
 
 Use a new, stable `originId` for each mounted view, for example
 `useRef(crypto.randomUUID()).current`. The same ID identifies an echoed save
@@ -165,6 +184,7 @@ module call emits `module-failed` and leaves the layout unchanged.
 
 `load-failed`, `save-failed`, and `subscribe-failed` retain the last valid
 controller state. `external-update-failed` rejects only that external update.
+`save-conflict-failed` rejects a malformed current record from the host.
 Subscribe to bridge events and surface them in application diagnostics; do not
 silently replace a working layout with malformed data.
 

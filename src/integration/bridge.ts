@@ -20,7 +20,7 @@ function validUpdate(update: LaymanWorkspaceUpdate): boolean {
     return (
         typeof update.revision === "number" &&
         Number.isSafeInteger(update.revision) &&
-        update.revision >= 0 &&
+        update.revision >= 1 &&
         typeof update.originId === "string" &&
         update.originId.trim().length > 0
     );
@@ -45,18 +45,75 @@ export function createLaymanWorkspaceBridge<TData extends JsonValue>(
     let stopPort: LaymanWorkspaceUnsubscribe | undefined;
     let saves = Promise.resolve();
     let lifecycle: Promise<void> = Promise.resolve();
+    let persistenceEpoch = 0;
 
     const emit = (event: LaymanWorkspaceBridgeEvent<TData>) => listeners.forEach((listener) => listener(event));
 
     const queueSave = (transition: LaymanControllerTransition<TData>) => {
         if (transition.status !== "applied" || transition.meta.origin === "restore") return;
-        const update = {
-            revision: ++workspaceRevision,
-            originId: options.originId,
+        const pending = {
+            epoch: persistenceEpoch,
             snapshot: serializeState(transition.next),
         };
-        saves = saves.then(() => options.snapshots.save(options.workspaceId, update)).catch((error) => {
-            emit({type: "save-failed", workspaceId: options.workspaceId, message: message(error)});
+        saves = saves.then(async () => {
+            if (pending.epoch !== persistenceEpoch) return;
+
+            const expectedRevision = workspaceRevision;
+            try {
+                const result = await options.snapshots.compareAndSave(options.workspaceId, {
+                    expectedRevision,
+                    originId: options.originId,
+                    snapshot: pending.snapshot,
+                });
+
+                if (result.status === "saved") {
+                    if (
+                        !validUpdate(result.update) ||
+                        result.update.originId !== options.originId ||
+                        result.update.revision <= expectedRevision
+                    ) {
+                        throw new Error("compareAndSave returned an invalid saved record");
+                    }
+                    workspaceRevision = result.update.revision;
+                    return;
+                }
+
+                persistenceEpoch += 1;
+                if (!validUpdate(result.current) || result.current.revision <= expectedRevision) {
+                    emit({
+                        type: "save-conflict-failed",
+                        workspaceId: options.workspaceId,
+                        expectedRevision,
+                        message: "compareAndSave returned an invalid current record",
+                    });
+                    return;
+                }
+
+                try {
+                    const state = deserializeState(result.current.snapshot) as LaymanState<TData>;
+                    const conflict = options.controller.replaceState(state, {
+                        origin: "restore",
+                        requestId: result.current.originId,
+                    });
+                    workspaceRevision = result.current.revision;
+                    emit({
+                        type: "save-conflicted",
+                        workspaceId: options.workspaceId,
+                        expectedRevision,
+                        currentRevision: workspaceRevision,
+                        transition: conflict,
+                    });
+                } catch (error) {
+                    emit({
+                        type: "save-conflict-failed",
+                        workspaceId: options.workspaceId,
+                        expectedRevision,
+                        message: message(error),
+                    });
+                }
+            } catch (error) {
+                emit({type: "save-failed", workspaceId: options.workspaceId, message: message(error)});
+            }
         });
     };
 
@@ -81,8 +138,9 @@ export function createLaymanWorkspaceBridge<TData extends JsonValue>(
 
         try {
             const state = deserializeState(update.snapshot) as LaymanState<TData>;
-            workspaceRevision = update.revision;
             const transition = options.controller.replaceState(state, {origin: "restore", requestId: update.originId});
+            workspaceRevision = update.revision;
+            persistenceEpoch += 1;
             emit({type: "external-update-applied", workspaceId: options.workspaceId, revision: workspaceRevision, transition});
             return transition;
         } catch (error) {

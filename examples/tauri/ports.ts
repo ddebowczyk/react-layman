@@ -1,5 +1,10 @@
 import type {JsonValue} from "../../src/core";
-import type {LaymanModuleHost, LaymanSnapshotPort, LaymanWorkspaceUpdate} from "../../src/integration";
+import type {
+    LaymanModuleHost,
+    LaymanSnapshotPort,
+    LaymanSnapshotSaveResult,
+    LaymanWorkspaceUpdate,
+} from "../../src/integration";
 
 export type TauriInvoke = <Result>(command: string, args: Record<string, unknown>) => Promise<Result>;
 export type TauriListen = <Payload>(event: string, receive: (event: {payload: Payload}) => void) => Promise<() => void>;
@@ -8,7 +13,8 @@ export type TauriListen = <Payload>(event: string, receive: (event: {payload: Pa
 export function createTauriSnapshotPort(invoke: TauriInvoke, listen: TauriListen): LaymanSnapshotPort {
     return {
         load: (workspaceId) => invoke<LaymanWorkspaceUpdate | undefined>("layman_workspace_load", {workspaceId}),
-        save: (workspaceId, update) => invoke<void>("layman_workspace_save", {workspaceId, update}),
+        compareAndSave: (workspaceId, request) =>
+            invoke<LaymanSnapshotSaveResult>("layman_workspace_compare_and_save", {workspaceId, request}),
         subscribe: (workspaceId, receive) =>
             listen<LaymanWorkspaceUpdate>(`layman://workspace/${workspaceId}`, (event) => receive(event.payload)),
     };

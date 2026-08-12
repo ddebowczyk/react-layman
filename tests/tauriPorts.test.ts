@@ -1,7 +1,7 @@
 import {describe, expect, it, vi} from "vitest";
 import {createTauriModuleHost, createTauriSnapshotPort} from "../examples/tauri/ports";
 import type {TauriInvoke, TauriListen} from "../examples/tauri/ports";
-import type {LaymanWorkspaceUpdate} from "../src/integration";
+import type {LaymanSnapshotSaveRequest, LaymanWorkspaceUpdate} from "../src/integration";
 import type {LaymanSerializedState} from "../src/types";
 
 interface ModuleData {
@@ -20,7 +20,10 @@ function update(): LaymanWorkspaceUpdate {
 describe("Tauri reference ports", () => {
     it("maps snapshot persistence and workspace events to application commands", async () => {
         const workspaceUpdate = update();
-        const invoke = vi.fn(async () => workspaceUpdate);
+        const saved = {status: "saved", update: workspaceUpdate} as const;
+        const invoke = vi.fn(async (command: string) =>
+            command === "layman_workspace_load" ? workspaceUpdate : saved
+        );
         const stop = vi.fn();
         let listener: ((event: {payload: LaymanWorkspaceUpdate}) => void) | undefined;
         const listen = vi.fn(async (_event: string, receive: (event: {payload: LaymanWorkspaceUpdate}) => void) => {
@@ -28,17 +31,21 @@ describe("Tauri reference ports", () => {
             return stop;
         });
         const snapshots = createTauriSnapshotPort(invoke as unknown as TauriInvoke, listen as unknown as TauriListen);
-        const persisted = {...workspaceUpdate, snapshot: workspaceUpdate.snapshot as LaymanSerializedState};
+        const request: LaymanSnapshotSaveRequest = {
+            expectedRevision: 2,
+            originId: workspaceUpdate.originId,
+            snapshot: workspaceUpdate.snapshot as LaymanSerializedState,
+        };
 
         expect(await snapshots.load("workspace-main")).toBe(workspaceUpdate);
-        await snapshots.save("workspace-main", persisted);
+        expect(await snapshots.compareAndSave("workspace-main", request)).toBe(saved);
         const receive = vi.fn();
         if (!snapshots.subscribe) throw new Error("Tauri snapshot port does not support subscriptions");
         const unsubscribe = await snapshots.subscribe("workspace-main", receive);
         listener?.({payload: workspaceUpdate});
 
         expect(invoke).toHaveBeenNthCalledWith(1, "layman_workspace_load", {workspaceId: "workspace-main"});
-        expect(invoke).toHaveBeenNthCalledWith(2, "layman_workspace_save", {workspaceId: "workspace-main", update: persisted});
+        expect(invoke).toHaveBeenNthCalledWith(2, "layman_workspace_compare_and_save", {workspaceId: "workspace-main", request});
         expect(listen).toHaveBeenCalledWith("layman://workspace/workspace-main", expect.any(Function));
         expect(receive).toHaveBeenCalledWith(workspaceUpdate);
         await unsubscribe();

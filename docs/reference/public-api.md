@@ -132,17 +132,18 @@ before it calls `deserializeState`.
 | API | Contract |
 | --- | --- |
 | `createLaymanWorkspaceBridge`, `LaymanWorkspaceBridge` | Connect one controller to application-owned workspace ports. |
-| `LaymanSnapshotPort`, `LaymanWorkspaceUpdate`, `LaymanWorkspaceUnsubscribe` | Versioned load, save, and external-update contract. |
+| `LaymanSnapshotPort`, `LaymanSnapshotSaveRequest`, `LaymanSnapshotSaveResult`, `LaymanWorkspaceUpdate`, `LaymanWorkspaceUnsubscribe` | Versioned load, compare-and-save, and external-update contract. |
 | `LaymanModuleHost` | Application-owned native module open, focus, and close operations. |
 | `LaymanWorkspaceBridgeOptions`, `LaymanWorkspaceInspection`, `LaymanWorkspaceBridgeEvent` | Setup, detached inspection, and typed event stream. |
 
 <!-- markdownlint-enable MD013 -->
 
 The bridge has no Tauri import. It calls ports supplied by the application.
-The application gives each update an integer `revision`, a nonempty `originId`,
-and a snapshot. The bridge serializes local saves, ignores echoed or stale
-external updates, and never persists an accepted external update again. The
-application must reject an attempted save older than its stored revision.
+The application gives each confirmed record a positive integer `revision`, a
+nonempty `originId`, and a snapshot. The bridge uses its confirmed revision in
+each compare-and-save request, adopts the current host record on conflict, and
+never persists an accepted external update again. The application chooses any
+explicit retry or merge policy.
 
 Use `bridge.inspect()`, `bridge.dispatch()`, `bridge.replaceState()`, and
 `bridge.subscribe()` as the live agent boundary. See the [Tauri integration

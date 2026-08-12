@@ -133,8 +133,9 @@ the application owns storage. For a plain React host, store the result of
 `deserializeState(snapshot)` before initializing the controller.
 
 For Tauri, implement `LaymanSnapshotPort` and use
-`createLaymanWorkspaceBridge`. The port owns workspace revision conflicts;
-Layman ignores stale and echoed updates. The [Tauri integration guide](../integrations/tauri.md)
+`createLaymanWorkspaceBridge`. The port atomically compare-and-saves a revision
+and returns its current record on conflict; Layman restores that record without
+retrying or merging it. The [Tauri integration guide](../integrations/tauri.md)
 has the complete port contract.
 
 ## Migrate persisted data deliberately
