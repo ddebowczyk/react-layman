@@ -6,6 +6,8 @@ import {findWindowRectAtPoint} from "./layoutGeometry";
 import {DragData, LaymanPath, Position} from "./types";
 import {isFloatingAddress} from "./utils";
 import {BottomSplitIcon, LeftSplitIcon, RightSplitIcon, TopSplitIcon, UnfloatIcon} from "./Icons";
+import {useLaymanView} from "./LaymanViewContext";
+import {readLaymanStyleNumber} from "./viewMetrics";
 
 // Fixed pixel sizes for the drop-zone overlays shown while dragging a floating
 // window. These are deliberately constant (not relative to container size) so
@@ -25,9 +27,7 @@ const EDGE_ICONS: Record<Edge, () => JSX.Element> = {
 };
 
 /** Computes the container-relative rect for one of the 4 fixed edge zones. */
-function edgeZoneRect(edge: Edge, container: {width: number; height: number}): Position {
-    const inset =
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--anchor-inset").trim(), 10) || 16;
+function edgeZoneRect(edge: Edge, container: {width: number; height: number}, inset: number): Position {
     switch (edge) {
         case "top":
             return {top: inset, left: (container.width - EDGE_LONG) / 2, width: EDGE_LONG, height: EDGE_SHORT};
@@ -53,7 +53,7 @@ function edgeZoneRect(edge: Edge, container: {width: number; height: number}): P
 /** One of the 4 fixed edge zones: docks the dragged floating window at the
  *  root of the layout, on that edge (splitting the root only if it isn't
  *  already a matching-direction split - see `treeAddWindow`). */
-function FloatingEdgeZone({edge, container}: {edge: Edge; container: {width: number; height: number}}) {
+function FloatingEdgeZone({edge, container, inset}: {edge: Edge; container: {width: number; height: number}; inset: number}) {
     const {layoutDispatch} = useContext(LaymanContext);
     const [{isOver}, drop] = useDrop<DragData, void, {isOver: boolean}>(() => ({
         accept: [WindowType],
@@ -75,7 +75,7 @@ function FloatingEdgeZone({edge, container}: {edge: Edge; container: {width: num
         <div
             ref={drop}
             className={`layman-floating-anchor ${edge} ${isOver ? "over" : ""}`}
-            style={{position: "absolute", ...edgeZoneRect(edge, container)}}
+            style={{position: "absolute", ...edgeZoneRect(edge, container, inset)}}
         >
             <Icon />
         </div>
@@ -134,6 +134,8 @@ function FloatingCenterZone({path, position}: {path: LaymanPath; position: Posit
  */
 export function FloatingDockZones() {
     const {layout, globalContainerSize, maxDepth} = useContext(LaymanContext);
+    const {rootRef} = useLaymanView();
+    const inset = readLaymanStyleNumber(rootRef.current, "--anchor-inset", 16);
 
     const {isDraggingFloat, clientOffset} = useDragLayer((monitor) => {
         const itemType = monitor.getItemType();
@@ -157,10 +159,10 @@ export function FloatingDockZones() {
         <>
             {maxDepth > 0 && (
                 <>
-                    <FloatingEdgeZone edge="top" container={globalContainerSize} />
-                    <FloatingEdgeZone edge="bottom" container={globalContainerSize} />
-                    <FloatingEdgeZone edge="left" container={globalContainerSize} />
-                    <FloatingEdgeZone edge="right" container={globalContainerSize} />
+                    <FloatingEdgeZone edge="top" container={globalContainerSize} inset={inset} />
+                    <FloatingEdgeZone edge="bottom" container={globalContainerSize} inset={inset} />
+                    <FloatingEdgeZone edge="left" container={globalContainerSize} inset={inset} />
+                    <FloatingEdgeZone edge="right" container={globalContainerSize} inset={inset} />
                 </>
             )}
             {hovered && <FloatingCenterZone path={hovered.path} position={hovered.position} />}

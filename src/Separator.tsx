@@ -2,17 +2,18 @@ import {MouseEventHandler, useContext, useEffect, useState} from "react";
 import {LaymanContext} from "./LaymanContext";
 import {deepEqual} from "./utils";
 import {SeparatorProps} from "./types";
+import {useLaymanView} from "./LaymanViewContext";
+import {readLaymanStyleNumber} from "./viewMetrics";
 
 export function Separator({nodePosition, position, index, direction, path, separators}: SeparatorProps) {
     const {globalContainerSize, layoutDispatch} = useContext(LaymanContext);
+    const {rootRef} = useLaymanView();
     const [isDragging, setIsDragging] = useState(false);
 
     // parseInt returns NaN (not null/undefined) when the CSS variable is missing,
     // so the fallback must use || rather than ?? to actually take effect.
-    const separatorThickness =
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--separator-thickness").trim(), 10) || 8;
-    const toolbarHeight =
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--toolbar-height").trim(), 10) || 32;
+    const separatorThickness = readLaymanStyleNumber(rootRef.current, "--separator-thickness", 8);
+    const toolbarHeight = readLaymanStyleNumber(rootRef.current, "--toolbar-height", 32);
 
     const previousSeparator = separators!.find((sep) => {
         const prevPath = [...path];

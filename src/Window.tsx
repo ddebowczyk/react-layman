@@ -5,6 +5,8 @@ import {createPortal} from "react-dom";
 import {WindowContext} from "./WindowContext";
 import {Position, WindowProps} from "./types";
 import {deepEqual, isFloatingAddress} from "./utils";
+import {useLaymanView} from "./LaymanViewContext";
+import {readLaymanStyleNumber} from "./viewMetrics";
 
 export function Window({position: rawPosition, path, tab, isSelected, zIndex: floatingZIndex}: WindowProps) {
     const {
@@ -16,19 +18,17 @@ export function Window({position: rawPosition, path, tab, isSelected, zIndex: fl
         showTabs,
         layoutDispatch,
     } = useContext(LaymanContext);
+    const {dragBorderElement, rootRef} = useLaymanView();
 
     const isFloating = isFloatingAddress(path);
 
     // parseInt returns NaN (not null/undefined) when the CSS variable is missing,
     // so the fallback must use || rather than ?? to actually take effect.
-    const separatorThickness =
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--separator-thickness").trim(), 10) || 8;
+    const separatorThickness = readLaymanStyleNumber(rootRef.current, "--separator-thickness", 8);
 
     // When the tab row is hidden the toolbar takes no vertical space, so the pane
     // fills the entire window region.
-    const windowToolbarHeight = showTabs
-        ? parseInt(getComputedStyle(document.documentElement).getPropertyValue("--toolbar-height").trim(), 10) || 64
-        : 0;
+    const windowToolbarHeight = showTabs ? readLaymanStyleNumber(rootRef.current, "--toolbar-height", 64) : 0;
 
     // A maximized window overrides its layout position to fill the whole container.
     const isMaximized = maximizedPath !== null && deepEqual(maximizedPath, path);
@@ -73,19 +73,7 @@ export function Window({position: rawPosition, path, tab, isSelected, zIndex: fl
         }
     }, [clientOffset, isDragging, windowDragStartPosition.x, windowDragStartPosition.y]);
 
-    const [portalElement, setPortalElement] = useState<HTMLElement | null>(null);
-
-    // Check for the portal target element when the component mounts
-    useEffect(() => {
-        const element = document.getElementById("drag-window-border");
-        if (element) {
-            setPortalElement(element);
-        } else {
-            console.error("Element with id 'drag-window-border' not found.");
-        }
-    }, []);
-
-    if (!portalElement) {
+    if (!dragBorderElement) {
         return null; // Don't render until portal element is available
     }
 
@@ -142,7 +130,7 @@ export function Window({position: rawPosition, path, tab, isSelected, zIndex: fl
                             userSelect: "none",
                         }}
                     ></div>,
-                    document.getElementById("drag-window-border")!
+                    dragBorderElement
                 )}
             <WindowContext.Provider
                 value={{

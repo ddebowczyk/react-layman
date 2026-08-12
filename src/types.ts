@@ -205,6 +205,7 @@ export type ToolbarButtonType =
     | "misc";
 
 export interface LaymanContextType {
+    viewId: string;
     globalContainerSize: Position;
     setGlobalContainerSize: Dispatch<SetStateAction<Position>>;
     layout: LaymanLayout;

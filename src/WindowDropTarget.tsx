@@ -4,6 +4,8 @@ import {useContext, useEffect, useRef} from "react";
 import {LaymanContext} from "./LaymanContext";
 import {DragData, Position, WindowAddress} from "./types";
 import {isFloatingAddress} from "./utils";
+import {useLaymanView} from "./LaymanViewContext";
+import {readLaymanStyleNumber} from "./viewMetrics";
 
 interface WindowDropTargetProps {
     path: WindowAddress;
@@ -14,6 +16,7 @@ interface WindowDropTargetProps {
 export function WindowDropTarget({path, position, placement}: WindowDropTargetProps) {
     const {globalContainerSize, layoutDispatch, setDropHighlightPosition, maxDepth, showTabs} =
         useContext(LaymanContext);
+    const {rootRef} = useLaymanView();
     const newDropHighlightPosition = useRef<Position>({
         top: 0,
         left: 0,
@@ -26,14 +29,11 @@ export function WindowDropTarget({path, position, placement}: WindowDropTargetPr
     // every placement behaves like "center" there and is always allowed.
     const wouldExceedMaxDepth = placement !== "center" && !isFloatingAddress(path) && path.length >= maxDepth;
 
-    const windowToolbarHeight = showTabs
-        ? parseInt(getComputedStyle(document.documentElement).getPropertyValue("--toolbar-height").trim(), 10) || 64
-        : 0;
+    const windowToolbarHeight = showTabs ? readLaymanStyleNumber(rootRef.current, "--toolbar-height", 64) : 0;
 
     // parseInt returns NaN (not null/undefined) when the CSS variable is missing,
     // so the fallback must use || rather than ?? to actually take effect.
-    const separatorThickness =
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--separator-thickness").trim(), 10) || 8;
+    const separatorThickness = readLaymanStyleNumber(rootRef.current, "--separator-thickness", 8);
 
     useEffect(() => {
         const dropPosition: Position = {
