@@ -78,6 +78,42 @@ describe("Layman view interactions", () => {
         expect(screen.getByRole("button", {name: "Close window controls"}).getAttribute("aria-expanded")).toBe("true");
     });
 
+    it("renders no library window controls for an empty toolbar configuration", () => {
+        const {root} = renderLaymanView({
+            state: {layout: window("window-main", tab("First", {}, "tab-first")), floatingWindows: []},
+            config: {showTabs: false, toolbar: {items: []}},
+        });
+
+        expect(root.querySelector('[data-layman-component="window-menu"]')).toBeNull();
+        expect(screen.queryByRole("button", {name: "Open window controls"})).toBeNull();
+        expect(screen.queryByRole("button", {name: "Maximize window"})).toBeNull();
+        expect(screen.queryByRole("button", {name: "Float window"})).toBeNull();
+        expect(screen.queryByRole("button", {name: "Close window"})).toBeNull();
+    });
+
+    it("uses a host renderer for a built-in window control", async () => {
+        const {controller, user} = renderLaymanView({
+            state: {layout: window("window-main", tab("First", {}, "tab-first")), floatingWindows: []},
+            config: {
+                toolbar: {
+                    items: [
+                        {
+                            kind: "builtin",
+                            id: "host-close",
+                            action: "window.close",
+                            render: ({invoke}) => <button type="button" onClick={invoke}>Dismiss module</button>,
+                        },
+                    ],
+                },
+            },
+        });
+
+        await user.click(screen.getByRole("button", {name: "Dismiss module"}));
+
+        expect(controller.getState()).toEqual({layout: undefined, floatingWindows: []});
+        expect(screen.queryByRole("button", {name: "Close window"})).toBeNull();
+    });
+
     it("maximizes and restores a tiled window", async () => {
         const left = window("window-left", tab("Left", {}, "tab-left"));
         const right = window("window-right", tab("Right", {}, "tab-right"));
